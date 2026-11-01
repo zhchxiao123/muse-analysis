@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Muse 10.0（Meta Endo/Hatch）逆向分析报告</title>
+<style>
+  :root{--ivory:#FAF9F5;--slate:#141413;--clay:#D97757;--olive:#788C5D;--rust:#B04A3F;--gray-150:#F0EEE6;--gray-300:#D1CFC5;--gray-500:#87867F;--gray-700:#3D3D3A;
+    --serif:ui-serif,Georgia,"Times New Roman",serif;--sans:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ivory);color:var(--slate);font-family:var(--sans);padding:48px 24px 96px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-500);margin-bottom:12px}
+  h1{font-family:var(--serif);font-weight:500;font-size:34px;letter-spacing:-.01em;margin-bottom:14px;line-height:1.3}
+  .lead{font-size:14.5px;line-height:1.75;color:var(--gray-700);max-width:760px;margin-bottom:36px}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.cards{grid-template-columns:1fr}}
+  a.card{display:block;text-decoration:none;color:inherit;border:1.5px solid var(--gray-300);border-radius:14px;background:#fff;padding:22px 24px;transition:transform .12s,border-color .12s}
+  a.card:hover{transform:translateY(-2px);border-color:var(--clay)}
+  .kind{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--clay);margin-bottom:8px}
+  .card h2{font-family:var(--serif);font-weight:500;font-size:21px;margin-bottom:8px}
+  .card p{font-size:13px;line-height:1.7;color:var(--gray-700)}
+  .card ul{margin:12px 0 0 0;padding-left:18px;font-size:12.5px;line-height:1.7;color:var(--gray-700)}
+  .meta{margin-top:36px;border:1.5px solid #E3DACC;background:#fff;border-radius:14px;padding:18px 22px;font-size:12.5px;line-height:1.75;color:var(--gray-700)}
+  .meta b{color:var(--slate)}
+  code{font-family:var(--mono);font-size:.88em;background:var(--gray-150);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Static reverse engineering · REA + Ghidra · 2026-10-31 / 11-01</div>
+  <h1>Muse 10.0（Meta Endo/Hatch）<br>Agent 应用逆向分析报告</h1>
+  <p class="lead">对 macOS 安装包 <code>Muse-10.0.dmg</code>（bundle id <code>com.meta.endo</code>）的静态分析。两篇报告：第一篇回答基础设施、数据流、组网与本机↔远程互联；第二篇深入 agent 的会话、运行时、文件、资料库与记忆设计。全部结论来自二进制字符串、符号、内嵌 web 客户端与包内资源，没有运行时观测。</p>
+  <div class="cards">
+    <a class="card" href="architecture.html">
+      <div class="kind">第一篇 · 架构</div>
+      <h2>基础设施、数据流与互联</h2>
+      <p>每用户一台 VM 的多租户架构；聊天通道与节点通道两条 Noise 会话；rsys WebRTC 语音；本机与 VM 的四条互联路径；60 多个本机工具。</p>
+      <ul><li>服务端拓扑与端点角色</li><li>一条消息的一生（7 步走查）</li><li>组网与传输技术表</li><li>安全与隐私模型</li></ul>
+    </a>
+    <a class="card" href="design.html">
+      <div class="kind">第二篇 · 详细设计</div>
+      <h2>会话、运行时、文件、资料库与记忆</h2>
+      <p>主聊 / 线程 / 侧聊 / 目标线程；delta.* 事件流与四条 lane；三类工具后端与 sentinel 出网管控；VM 文件系统布局；资料库八分区；/MEMORY.md 记忆；共享 Agent 与 Peers。</p>
+      <ul><li>218 条网关路由还原</li><li>一轮对话的事件时间线</li><li>运行时与工具路由图</li><li>待验证清单</li></ul>
+    </a>
+  </div>
+  <div class="meta"><b>阅读提示：</b>两篇报告都有左侧目录与右侧标注画笔（可在图上圈画，Esc 退出，Ctrl/Cmd+Z 撤销）。报告内对"观察到 / 推断 / 未知"做了分级；出现次数只表示技术嵌入深度，不是流量指标。</div>
+</div>
+</body>
+</html>
