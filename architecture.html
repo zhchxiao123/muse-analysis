@@ -575,7 +575,7 @@
         <tr><td>文件上行</td><td>HTTP</td><td><code>files.upload</code> 描述："Copy … to the connected VM over HTTP … uploads/ path relative to the VM home"</td></tr>
         <tr><td>控制面 REST</td><td>HTTPS JSON</td><td><code>/hatch/*</code> 共 60 余条路径（鉴权、VM、邮箱、邀请、订阅、分享）</td></tr>
       </table>
-      <div class="delta"><b>小结：</b>"app 里的聊天怎么到服务端"的答案是：<b>不经过 Meta 的中心 API，而是 web 层直连用户自己的 VM 网关，先 Noise 再 RPC</b>；"服务端回复怎么到 app"是同一条会话上的流式事件。工具执行则是 VM 反向调用原生节点的第二条会话。</div>
+      <div class="delta"><b>小结：</b>"app 里的聊天怎么到服务端"的答案是：<b>不经过 Meta 的中心 API，而是 web 层经共享入口 hatch.metaaivm.com 直达用户自己的 VM，先 Noise 再 RPC</b>；"服务端回复怎么到 app"是同一条会话上的流式事件。工具执行则是 VM 反向调用原生节点的第二条会话。</div>
     </div>
   </section>
 
