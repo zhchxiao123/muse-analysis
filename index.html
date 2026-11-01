@@ -29,7 +29,7 @@
 <div class="wrap">
   <div class="eyebrow">Static reverse engineering · REA + Ghidra · 2026-10-31 / 11-01</div>
   <h1>Muse 10.0（Meta Endo/Hatch）<br>Agent 应用逆向分析报告</h1>
-  <p class="lead">对 macOS 安装包 <code>Muse-10.0.dmg</code>（bundle id <code>com.meta.endo</code>）的静态分析。两篇报告：第一篇回答基础设施、数据流、组网与本机↔远程互联；第二篇深入 agent 的会话、运行时、文件、资料库与记忆设计。全部结论来自二进制字符串、符号、内嵌 web 客户端与包内资源，没有运行时观测。</p>
+  <p class="lead">对 macOS 安装包 <code>Muse-10.0.dmg</code>（bundle id <code>com.meta.endo</code>）的静态分析。三篇报告：第一篇回答基础设施、数据流、组网与本机↔远程互联；第二篇深入 agent 的会话、运行时、文件、资料库与记忆设计；第三篇是数据流架构图。全部结论来自二进制字符串、符号、内嵌 web 客户端与包内资源，没有运行时观测。</p>
   <div class="cards">
     <a class="card" href="architecture.html">
       <div class="kind">第一篇 · 架构</div>
@@ -44,7 +44,15 @@
       <ul><li>218 条网关路由还原</li><li>一轮对话的事件时间线</li><li>运行时与工具路由图</li><li>待验证清单</li></ul>
     </a>
   </div>
-  <div class="meta"><b>阅读提示：</b>两篇报告都有左侧目录与右侧标注画笔（可在图上圈画，Esc 退出，Ctrl/Cmd+Z 撤销）。报告内对"观察到 / 推断 / 未知"做了分级；出现次数只表示技术嵌入深度，不是流量指标。</div>
+  <div class="cards" style="margin-top:16px">
+    <a class="card" href="dataflow.html">
+      <div class="kind">第三篇 · 架构图</div>
+      <h2>数据流架构图：共享入口、vm_id 分发、鉴权链与 Agent 交互</h2>
+      <p>三张图把前两篇压成一页：端到端数据流全景（13 条链路对应协议与鉴权）、八道门的信任链、以 daemon 为中心的 Agent 交互能力图。</p>
+      <ul><li>客户端始终拨共享入口 hatch.metaaivm.com，按 vm_id 转发</li><li>Noise 在 VM 内终止，边缘看不到明文</li><li>四个能力出口 + 一个出网入口（sentinel）</li></ul>
+    </a>
+  </div>
+  <div class="meta"><b>阅读提示：</b>三篇报告都有左侧目录与右侧标注画笔（可在图上圈画，Esc 退出，Ctrl/Cmd+Z 撤销）。报告内对"观察到 / 推断 / 未知"做了分级；出现次数只表示技术嵌入深度，不是流量指标。</div>
 </div>
 </body>
 </html>

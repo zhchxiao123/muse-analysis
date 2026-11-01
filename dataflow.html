@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Muse 数据流架构图：共享入口、vm_id 分发、鉴权链与 Agent 交互</title>
+<style>
+  :root{--ivory:#FAF9F5;--slate:#141413;--clay:#D97757;--oat:#E3DACC;--olive:#788C5D;--rust:#B04A3F;--gray-150:#F0EEE6;--gray-300:#D1CFC5;--gray-500:#87867F;--gray-700:#3D3D3A;
+    --serif:ui-serif,Georgia,"Times New Roman",serif;--sans:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ivory);color:var(--slate);font-family:var(--sans);-webkit-font-smoothing:antialiased;padding:28px 24px 96px;padding-right:104px}
+  @media(max-width:980px){body{padding-right:24px}}
+  .sheet{max-width:1300px;margin:0 auto;display:grid;grid-template-columns:176px minmax(0,1fr);gap:34px;align-items:start}
+  .sidenav{position:sticky;top:28px}
+  .brand{margin-bottom:16px;padding-bottom:15px;border-bottom:1.5px solid var(--gray-300)}
+  .brand-eyebrow{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--clay);margin-bottom:7px}
+  .brand-title{font-family:var(--serif);font-weight:500;font-size:17px;line-height:1.4}
+  .brand-sub{margin-top:7px;font-family:var(--mono);font-size:10px;color:var(--gray-500)}
+  .toc{display:flex;flex-direction:column;gap:2px}
+  .toc a{font-size:12px;color:var(--gray-500);text-decoration:none;padding:6px 9px;border:1.2px solid transparent;border-radius:7px;display:flex;align-items:baseline;gap:7px;line-height:1.4}
+  .toc a:hover{color:var(--slate);background:var(--gray-150)}
+  .toc a.on{color:var(--slate);font-weight:600;background:#fff;border-color:var(--gray-300)}
+  .toc .num{font-family:var(--mono);font-size:10px;color:var(--clay)}
+  .toc a.on .num{color:var(--rust)}
+  .navhint{margin-top:12px;padding-top:11px;border-top:1px solid var(--gray-150);font-size:10px;line-height:1.6;color:var(--gray-500)}
+  @media(max-width:980px){.sheet{grid-template-columns:1fr;gap:24px}.sidenav{position:static}.toc{flex-direction:row;flex-wrap:wrap;gap:6px}.navhint{display:none}}
+  header{margin-bottom:36px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-500);margin-bottom:10px}
+  h1{font-family:var(--serif);font-weight:500;font-size:33px;margin-bottom:12px}
+  .lead{font-size:14.5px;line-height:1.75;color:var(--gray-700);max-width:830px}
+  code{font-family:var(--mono);font-size:.88em;background:var(--gray-150);padding:1px 5px;border-radius:4px}
+  section{margin-top:58px;scroll-margin-top:24px}
+  section>h2{font-family:var(--serif);font-weight:500;font-size:25px;margin-bottom:8px}
+  section>.sub{font-size:13.5px;color:var(--gray-700);line-height:1.7;max-width:830px;margin-bottom:22px}
+  .n{font-family:var(--mono);font-size:12px;color:var(--clay);margin-right:8px;font-weight:600}
+  .warn{color:var(--rust);font-weight:600}.good{color:var(--olive);font-weight:600}
+  .bridge{margin:42px 0 -14px;padding:4px 0 4px 20px;border-left:3px solid var(--clay);font-family:var(--serif);font-size:16px;line-height:1.6}
+  .bridge b{font-weight:600}.bridge .to{display:block;margin-top:7px;font-family:var(--sans);font-size:13px;color:var(--gray-700)}
+  .card{border:1.5px solid var(--gray-300);border-radius:14px;background:#fff;padding:22px 24px}
+  .card h3{font-family:var(--serif);font-weight:500;font-size:18px;margin-bottom:4px}
+  .card .tag{font-size:11.5px;color:var(--gray-500);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--gray-150)}
+  .card p{font-size:13px;line-height:1.7;color:var(--gray-700)}.card p+p{margin-top:8px}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:860px){.g2,.g3{grid-template-columns:1fr}}
+  figure{border:1.5px solid var(--gray-300);border-radius:14px;background:#fff;padding:20px 22px 16px;margin-bottom:16px}
+  figure>svg{display:block;width:100%;height:auto}
+  figcaption{margin-top:14px;padding-top:12px;border-top:1px solid var(--gray-150);font-size:12.5px;line-height:1.7;color:var(--gray-700)}figcaption b{color:var(--slate)}
+  .fig-h{font-size:12.5px;font-weight:600;margin-bottom:14px;display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+  .fig-h span{font-family:var(--mono);font-size:11px;color:var(--clay);font-weight:400}
+  .rf text{font-family:var(--sans);font-size:11.5px;fill:var(--slate)}
+  .rf .lab{font-size:11px;fill:var(--gray-700)}.rf .mono{font-family:var(--mono);font-size:10px;fill:var(--gray-500)}.rf .tiny{font-size:9.5px;fill:var(--gray-500)}
+  .rf .box{fill:#fff;stroke:var(--gray-300);stroke-width:1.5}.rf .box-d{fill:var(--gray-150);stroke:var(--gray-300);stroke-width:1.5}
+  .rf .box-x{fill:rgba(217,119,87,.12);stroke:var(--clay);stroke-width:1.5}.rf .box-ok{fill:rgba(120,140,93,.14);stroke:var(--olive);stroke-width:1.5}
+  .rf .ln{stroke:var(--gray-500);stroke-width:1.5;fill:none}.rf .ln-d{stroke:var(--rust);stroke-width:1.5;fill:none;stroke-dasharray:5 4}.rf .ln-ok{stroke:var(--olive);stroke-width:1.5;fill:none}
+  .rf .ln-b{stroke:#3A4EC9;stroke-width:1.5;fill:none;stroke-dasharray:2 3}
+  .rf .num{font-family:var(--mono);font-size:9.5px;font-weight:700;fill:#fff}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-weight:600;color:var(--gray-700);border-bottom:1.5px solid var(--gray-300);padding:7px 10px 7px 0;white-space:nowrap}
+  td{border-bottom:1px solid var(--gray-150);padding:8px 10px 8px 0;line-height:1.6;color:var(--gray-700);vertical-align:top}
+  td:first-child{font-weight:600;color:var(--slate)}tr:last-child td{border-bottom:none}
+  .delta{margin-top:16px;padding-top:14px;border-top:1px solid var(--gray-150);font-size:12.5px;line-height:1.8;color:var(--gray-700)}.delta b{color:var(--slate)}
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--gray-700)}
+  .legend span{display:inline-flex;align-items:center;gap:8px}
+  .chip{width:22px;height:14px;border:1.5px solid var(--gray-300);border-radius:4px;background:#fff}
+  .chip.x{background:rgba(217,119,87,.12);border-color:var(--clay)}.chip.ok{background:rgba(120,140,93,.14);border-color:var(--olive)}.chip.d{background:var(--gray-150)}
+  .chip.line{height:0;border:none;border-top:2px solid var(--gray-500);border-radius:0}.chip.line.red{border-top:2px dashed var(--rust)}.chip.line.green{border-top:2px solid var(--olive)}.chip.line.blue{border-top:2px dotted #3A4EC9}
+  .note{margin-top:44px;border:1.5px solid var(--oat);background:#fff;border-radius:14px;padding:20px 22px}
+  .note h2{font-family:var(--serif);font-weight:500;font-size:20px;margin-bottom:10px}.note ul{list-style:none}
+  .note li{font-size:13.5px;line-height:1.75;color:var(--gray-700);padding-left:18px;position:relative;margin-bottom:7px}.note li::before{content:"◦";position:absolute;left:2px;color:var(--clay)}
+  #annLayer{position:absolute;top:0;left:0;z-index:40;pointer-events:none;overflow:visible}
+  body.ann-on #annLayer{pointer-events:auto;cursor:crosshair}body.ann-on{user-select:none;-webkit-user-select:none}
+  .ann-bar{position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:60;display:flex;flex-direction:column;gap:4px;background:#fff;border:1.5px solid var(--gray-300);border-radius:13px;padding:9px 7px;box-shadow:0 6px 22px rgba(20,20,19,.12);width:74px;opacity:.94}
+  .ann-bar.hidden{display:none}.ann-bar:hover{opacity:1}
+  .ann-bar button{font-family:inherit;font-size:11px;color:var(--gray-700);background:var(--gray-150);border:1px solid var(--gray-300);border-radius:8px;padding:6px 2px;cursor:pointer;white-space:nowrap;width:100%}
+  .ann-bar button:hover{background:#fff;color:var(--slate)}.ann-bar button.on{background:var(--clay);border-color:var(--clay);color:#fff;font-weight:600}
+  .ann-bar button.primary{background:var(--slate);border-color:var(--slate);color:#fff;font-weight:600}.ann-bar button.primary.on{background:var(--clay);border-color:var(--clay)}
+  .ann-bar .sep{height:1px;width:100%;background:var(--gray-300);margin:4px 0 3px}
+  .ann-bar input[type=color]{width:100%;height:26px;padding:0;border:1px solid var(--gray-300);border-radius:7px;background:none;cursor:pointer}
+  .ann-bar input[type=range]{width:100%;accent-color:var(--clay);cursor:pointer;margin:2px 0}
+  .ann-launch{position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:60;display:none;font-family:inherit;font-size:12px;color:var(--gray-700);background:#fff;border:1.5px solid var(--gray-300);border-radius:10px;padding:14px 7px;cursor:pointer;box-shadow:0 6px 22px rgba(20,20,19,.12);writing-mode:vertical-rl;letter-spacing:.1em}
+  .ann-launch.show{display:block}.ann-launch:hover{color:var(--slate);border-color:var(--clay)}
+  @media print{.ann-bar,.ann-launch,.sidenav{display:none!important}}
+</style>
+</head>
+<body>
+<svg id="annLayer" aria-hidden="true"></svg>
+<div class="ann-bar" id="annBar">
+  <button id="annToggle" class="primary">开启标注</button><span class="sep"></span>
+  <button class="ann-tool on" data-tool="pen">画笔</button><button class="ann-tool" data-tool="mark">荧光笔</button><button class="ann-tool" data-tool="eraser">橡皮擦</button><span class="sep"></span>
+  <input type="color" id="annColor" value="#D97757"><input type="range" id="annSize" min="2" max="26" value="4"><span class="sep"></span>
+  <button id="annUndo">撤销</button><button id="annClear">清空</button><button id="annHide">收起</button>
+</div>
+<button class="ann-launch" id="annLaunch">✎ 标注</button>
+
+<div class="sheet">
+  <aside class="sidenav">
+    <div class="brand">
+      <div class="brand-eyebrow">逆向分析报告 · 第三篇</div>
+      <div class="brand-title">Muse 数据流<br>架构图</div>
+      <div class="brand-sub">com.meta.endo 10.0 · 2026-11-01</div>
+    </div>
+    <nav class="toc" id="toc">
+      <a href="#sec-overview" data-sec="sec-overview"><span class="num">01</span><span>端到端数据流全景</span></a>
+      <a href="#sec-auth" data-sec="sec-auth"><span class="num">02</span><span>鉴权与信任链</span></a>
+      <a href="#sec-agent" data-sec="sec-agent"><span class="num">03</span><span>Agent 交互能力</span></a>
+      <a href="#sec-notes" data-sec="sec-notes"><span class="num">04</span><span>图例与边界</span></a>
+    </nav>
+    <div class="navhint">点击目录跳转 · 右侧可圈画标注</div>
+  </aside>
+
+  <main class="main">
+  <header>
+    <div class="eyebrow">Data-flow architecture · derived from static analysis · see reports 1 and 2 for evidence</div>
+    <h1>Muse 数据流架构图：共享入口、vm_id 分发、鉴权链与 Agent 交互</h1>
+    <p class="lead">把前两篇的发现压成三张图。核心事实：客户端<strong>永远拨号共享入口</strong> <code>hatch.metaaivm.com</code>，入口（ingress 反向代理）按 <code>vm_id</code> 把 Noise 隧道转发到用户 VM；Noise 在 VM 内终止，边缘看不到明文；VM 内网关再按 ServiceFrame 的 <code>service</code> 字段分发到 daemon / sentinel / vault / authd / ssh_access。图中实线为观察到的链路，虚线为推断。</p>
+  </header>
+
+  <section id="sec-overview" style="margin-top:4px">
+    <h2><span class="n">01</span>端到端数据流全景</h2>
+    <p class="sub">四列：客户端 · Meta 控制面与边缘 · 用户 VM · 外部。编号对应下表的协议与鉴权。</p>
+    <figure>
+      <div class="fig-h">图 1 · 端到端数据流<span>实线观察到 · 赤色虚线 = VM 反向调用本机 · 蓝点线 = 推断</span></div>
+      <svg class="rf" viewBox="0 0 760 640" role="img" aria-label="端到端数据流">
+        <defs>
+          <marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker>
+          <marker id="m1o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#788C5D"/></marker>
+          <marker id="m1r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B04A3F"/></marker>
+          <marker id="m1b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3A4EC9"/></marker>
+        </defs>
+        <!-- column headers -->
+        <text x="104" y="22" text-anchor="middle" style="fill:#87867F;font-weight:600;font-size:10.5px">客户端</text>
+        <text x="304" y="22" text-anchor="middle" style="fill:#87867F;font-weight:600;font-size:10.5px">Meta 控制面与边缘</text>
+        <text x="514" y="22" text-anchor="middle" style="fill:#87867F;font-weight:600;font-size:10.5px">用户 VM（每人一台）</text>
+        <text x="690" y="22" text-anchor="middle" style="fill:#87867F;font-weight:600;font-size:10.5px">外部</text>
+        <line x1="204" y1="30" x2="204" y2="628" stroke="#F0EEE6"/><line x1="404" y1="30" x2="404" y2="628" stroke="#F0EEE6"/><line x1="624" y1="30" x2="624" y2="628" stroke="#F0EEE6"/>
+        <!-- A: client -->
+        <rect class="box-d" x="14" y="36" width="180" height="150" rx="10"/>
+        <text x="104" y="56" text-anchor="middle" style="fill:#141413;font-weight:600">Mac 应用</text>
+        <text x="104" y="74" class="tiny" text-anchor="middle" style="fill:#3D3D3A">原生壳：登录态、/api/hatch 代理</text>
+        <text x="104" y="90" class="tiny" text-anchor="middle" style="fill:#3D3D3A">web 聊天层：Noise 会话 ①</text>
+        <text x="104" y="106" class="tiny" text-anchor="middle" style="fill:#3D3D3A">Endo 节点：Noise 会话 ②</text>
+        <text x="104" y="122" class="tiny" text-anchor="middle" style="fill:#3D3D3A">HatchTools：邮件 · 信息 · 文件 · 电脑控制</text>
+        <text x="104" y="138" class="tiny" text-anchor="middle" style="fill:#3D3D3A">rsys：语音通话</text>
+        <text x="104" y="154" class="tiny" text-anchor="middle" style="fill:#3D3D3A">Chrome 扩展（Native Messaging）</text>
+        <text x="104" y="176" class="mono" text-anchor="middle" style="fill:#87867F">app_id=endo-macos</text>
+        <rect class="box-d" x="14" y="200" width="180" height="52" rx="10"/>
+        <text x="104" y="220" text-anchor="middle" style="fill:#141413;font-weight:600">浏览器 embed / 手机 app</text>
+        <text x="104" y="238" class="tiny" text-anchor="middle" style="fill:#3D3D3A">同一 web 客户端，vm_id 可省略</text>
+        <rect class="box-d" x="14" y="266" width="180" height="52" rx="10"/>
+        <text x="104" y="286" text-anchor="middle" style="fill:#141413;font-weight:600">IM 渠道</text>
+        <text x="104" y="304" class="tiny" text-anchor="middle" style="fill:#3D3D3A">WhatsApp / Messenger / Telegram</text>
+        <!-- B: control plane & edge -->
+        <rect class="box" x="214" y="36" width="180" height="58" rx="10"/>
+        <text x="304" y="56" text-anchor="middle" style="fill:#141413;font-weight:600">账号与登录</text>
+        <text x="304" y="72" class="tiny" text-anchor="middle" style="fill:#3D3D3A">auth.meta.com · OIDC · passkey</text>
+        <text x="304" y="86" class="tiny" text-anchor="middle" style="fill:#3D3D3A">accountscenter.meta.com</text>
+        <rect class="box" x="214" y="106" width="180" height="88" rx="10"/>
+        <text x="304" y="126" text-anchor="middle" style="fill:#141413;font-weight:600">控制面 API（/hatch/*）</text>
+        <text x="304" y="142" class="tiny" text-anchor="middle" style="fill:#3D3D3A">hatch-api.meta.ai · api.meta.ai</text>
+        <text x="304" y="156" class="tiny" text-anchor="middle" style="fill:#3D3D3A">token · noise-notary-token</text>
+        <text x="304" y="170" class="tiny" text-anchor="middle" style="fill:#3D3D3A">lease_vm · bind-cvm · ssh tokens</text>
+        <text x="304" y="184" class="tiny" text-anchor="middle" style="fill:#3D3D3A">invites · subscription</text>
+        <rect class="box-x" x="214" y="206" width="180" height="108" rx="10"/>
+        <text x="304" y="226" text-anchor="middle" style="fill:#141413;font-weight:600">共享入口</text>
+        <text x="304" y="242" class="mono" text-anchor="middle" style="fill:#3D3D3A">hatch.metaaivm.com/v1/noise</text>
+        <text x="304" y="258" class="tiny" text-anchor="middle" style="fill:#3D3D3A">Meta 边缘：TLS 终止，匿名 401</text>
+        <text x="304" y="272" class="tiny" text-anchor="middle" style="fill:#3D3D3A">ingress_rev_proxy 校验 token</text>
+        <text x="304" y="286" class="tiny" text-anchor="middle" style="fill:#3D3D3A">按 vm_id 转发 Noise 帧</text>
+        <text x="304" y="302" class="tiny" text-anchor="middle" style="fill:#B04A3F;font-weight:600">看不到 Noise 明文</text>
+        <rect class="box" x="214" y="326" width="180" height="58" rx="10"/>
+        <text x="304" y="346" text-anchor="middle" style="fill:#141413;font-weight:600">实时媒体</text>
+        <text x="304" y="362" class="tiny" text-anchor="middle" style="fill:#3D3D3A">meta-ai-realtime · edge-stun</text>
+        <text x="304" y="376" class="tiny" text-anchor="middle" style="fill:#3D3D3A">shortwave ASR · TTS 流</text>
+        <rect x="214" y="396" width="180" height="52" rx="10" fill="none" stroke="#3A4EC9" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <text x="304" y="416" text-anchor="middle" style="fill:#141413;font-weight:600">模型推理（位置推断）</text>
+        <text x="304" y="434" class="tiny" text-anchor="middle" style="fill:#3D3D3A">model.get/set 选型 · 名称已抹掉</text>
+        <rect class="box" x="214" y="460" width="180" height="52" rx="10"/>
+        <text x="304" y="480" text-anchor="middle" style="fill:#141413;font-weight:600">CDN · 上传 · 更新 · 遥测</text>
+        <text x="304" y="498" class="tiny" text-anchor="middle" style="fill:#3D3D3A">fbcdn · rupload · appcast · QPL</text>
+        <!-- C: VM -->
+        <rect class="box-ok" x="414" y="36" width="200" height="64" rx="10"/>
+        <text x="514" y="56" text-anchor="middle" style="fill:#141413;font-weight:600">VM 网关（Noise 终止）</text>
+        <text x="514" y="72" class="tiny" text-anchor="middle" style="fill:#3D3D3A">XX 握手 · 证明 · RV 密钥</text>
+        <text x="514" y="88" class="tiny" text-anchor="middle" style="fill:#3D3D3A">ServiceFrame 按 service 分发</text>
+        <rect class="box-ok" x="414" y="112" width="200" height="170" rx="10"/>
+        <text x="514" y="132" text-anchor="middle" style="fill:#141413;font-weight:600">daemon（agent 运行时）</text>
+        <text x="514" y="150" class="tiny" text-anchor="middle" style="fill:#3D3D3A">sessions · chat.stream_events</text>
+        <text x="514" y="164" class="tiny" text-anchor="middle" style="fill:#3D3D3A">工具路由 · 子代理 · compaction</text>
+        <text x="514" y="178" class="tiny" text-anchor="middle" style="fill:#3D3D3A">nodes.invoke → 本机 / web 节点</text>
+        <text x="514" y="192" class="tiny" text-anchor="middle" style="fill:#3D3D3A">cron · goals · feed · ideas</text>
+        <text x="514" y="206" class="tiny" text-anchor="middle" style="fill:#3D3D3A">fs · library · memory · spaces</text>
+        <text x="514" y="220" class="tiny" text-anchor="middle" style="fill:#3D3D3A">peers · shared agents · channels</text>
+        <text x="514" y="234" class="tiny" text-anchor="middle" style="fill:#3D3D3A">VM 浏览器（lease / takeover）</text>
+        <text x="514" y="248" class="tiny" text-anchor="middle" style="fill:#3D3D3A">tool.exec / imagine / web_fetch</text>
+        <text x="514" y="268" class="mono" text-anchor="middle" style="fill:#87867F">/home/hatch/workspace · /MEMORY.md</text>
+        <rect class="box-ok" x="414" y="294" width="200" height="56" rx="10"/>
+        <text x="514" y="314" text-anchor="middle" style="fill:#141413;font-weight:600">sentinel（出网管控）</text>
+        <text x="514" y="332" class="tiny" text-anchor="middle" style="fill:#3D3D3A">tproxy · mitm · SNI · 审批 · 作用域</text>
+        <rect class="box-ok" x="414" y="362" width="96" height="56" rx="10"/>
+        <text x="462" y="382" text-anchor="middle" style="fill:#141413;font-weight:600">vault</text>
+        <text x="462" y="400" class="tiny" text-anchor="middle" style="fill:#3D3D3A">LUKS · 凭据库</text>
+        <rect class="box-ok" x="518" y="362" width="96" height="56" rx="10"/>
+        <text x="566" y="382" text-anchor="middle" style="fill:#141413;font-weight:600">authd</text>
+        <text x="566" y="400" class="tiny" text-anchor="middle" style="fill:#3D3D3A">连接器 OAuth 回调</text>
+        <rect class="box-ok" x="414" y="430" width="200" height="40" rx="10"/>
+        <text x="514" y="455" text-anchor="middle" style="fill:#141413;font-weight:600">ssh_access <tspan class="tiny" style="fill:#3D3D3A;font-weight:400">· operator 入口 · 需 notary 头</tspan></text>
+        <!-- D: external -->
+        <rect class="box" x="634" y="36" width="112" height="64" rx="10"/>
+        <text x="690" y="56" text-anchor="middle" style="fill:#141413;font-weight:600">透明日志</text>
+        <text x="690" y="72" class="tiny" text-anchor="middle" style="fill:#3D3D3A">Cloudflare Plexi</text>
+        <text x="690" y="86" class="tiny" text-anchor="middle" style="fill:#3D3D3A">Sigstore · 吊销表</text>
+        <rect class="box" x="634" y="112" width="112" height="64" rx="10"/>
+        <text x="690" y="132" text-anchor="middle" style="fill:#141413;font-weight:600">其他用户的 VM</text>
+        <text x="690" y="148" class="tiny" text-anchor="middle" style="fill:#3D3D3A">peers · 共享 agent</text>
+        <text x="690" y="162" class="tiny" text-anchor="middle" style="fill:#3D3D3A">经同一共享入口</text>
+        <rect class="box" x="634" y="294" width="112" height="56" rx="10"/>
+        <text x="690" y="314" text-anchor="middle" style="fill:#141413;font-weight:600">互联网</text>
+        <text x="690" y="332" class="tiny" text-anchor="middle" style="fill:#3D3D3A">网页 · SaaS API</text>
+        <rect class="box" x="634" y="362" width="112" height="56" rx="10"/>
+        <text x="690" y="382" text-anchor="middle" style="fill:#141413;font-weight:600">OAuth 提供方</text>
+        <text x="690" y="400" class="tiny" text-anchor="middle" style="fill:#3D3D3A">Google · 1Password…</text>
+        <!-- flows -->
+        <!-- 1 login -->
+        <path class="ln" d="M196,62 L210,62" marker-end="url(#m1)"/><circle cx="203" cy="50" r="7" fill="#87867F"/><text x="203" y="53.5" class="num" text-anchor="middle">1</text>
+        <!-- 2 control plane -->
+        <path class="ln" d="M196,140 L210,140" marker-end="url(#m1)"/><circle cx="203" cy="128" r="7" fill="#87867F"/><text x="203" y="131.5" class="num" text-anchor="middle">2</text>
+        <!-- 3 WSS to ingress -->
+        <path class="ln-ok" d="M196,98 L214,240" marker-end="url(#m1o)"/><circle cx="205" cy="168" r="7" fill="#788C5D"/><text x="205" y="171.5" class="num" text-anchor="middle">3</text>
+        <!-- 4 ingress -> VM gateway (opaque frames) -->
+        <path class="ln-ok" d="M396,236 L410,70" marker-end="url(#m1o)"/><circle cx="403" cy="150" r="7" fill="#788C5D"/><text x="403" y="153.5" class="num" text-anchor="middle">4</text>
+        <!-- 5 gateway -> daemon -->
+        <path class="ln" d="M514,102 L514,108" marker-end="url(#m1)"/>
+        <!-- 6 node invoke back to Mac (dashed red) via same ingress -->
+        <path class="ln-d" d="M414,178 L396,250 L196,112" marker-end="url(#m1r)"/><circle cx="300" cy="196" r="7" fill="#B04A3F"/><text x="300" y="199.5" class="num" text-anchor="middle">5</text>
+        <!-- 7 egress via sentinel -->
+        <path class="ln" d="M514,284 L514,290" marker-end="url(#m1)"/>
+        <path class="ln" d="M616,322 L630,322" marker-end="url(#m1)"/><circle cx="623" cy="310" r="7" fill="#87867F"/><text x="623" y="313.5" class="num" text-anchor="middle">6</text>
+        <!-- 8 authd <-> OAuth -->
+        <path class="ln" d="M616,390 L630,390" marker-end="url(#m1)"/><path class="ln" d="M632,398 L618,398" marker-end="url(#m1)"/><circle cx="623" cy="376" r="7" fill="#87867F"/><text x="623" y="379.5" class="num" text-anchor="middle">7</text>
+        <!-- 9 voice -->
+        <path class="ln" d="M196,138 L214,350" marker-end="url(#m1)"/><circle cx="208" cy="300" r="7" fill="#87867F"/><text x="208" y="303.5" class="num" text-anchor="middle">8</text>
+        <!-- 10 model inference inferred -->
+        <path class="ln-b" d="M414,250 L396,420" marker-end="url(#m1b)"/><circle cx="403" cy="334" r="7" fill="#3A4EC9"/><text x="403" y="337.5" class="num" text-anchor="middle">9</text>
+        <!-- 11 peers / shared agents via ingress -->
+        <path class="ln" d="M616,144 L630,144" marker-end="url(#m1)"/><path class="ln" d="M632,152 L618,152" marker-end="url(#m1)"/><circle cx="623" cy="130" r="7" fill="#87867F"/><text x="623" y="133.5" class="num" text-anchor="middle">10</text>
+        <!-- 12 attestation verification against transparency (client verifies proof carried in msg2; proof sources external) -->
+        <path class="ln-b" d="M616,56 L630,56" marker-end="url(#m1b)"/><circle cx="623" cy="44" r="7" fill="#3A4EC9"/><text x="623" y="47.5" class="num" text-anchor="middle">11</text>
+        <!-- 13 channels -->
+        <path class="ln" d="M196,292 L214,180" marker-end="url(#m1)"/><circle cx="207" cy="236" r="7" fill="#87867F"/><text x="207" y="239.5" class="num" text-anchor="middle">12</text>
+        <!-- 14 CDN/telemetry -->
+        <path class="ln" d="M196,170 L214,486" marker-end="url(#m1)"/><circle cx="212" cy="420" r="7" fill="#87867F"/><text x="212" y="423.5" class="num" text-anchor="middle">13</text>
+        <!-- legend band -->
+        <line x1="14" y1="528" x2="746" y2="528" stroke="#F0EEE6" stroke-width="1.5"/>
+        <text x="14" y="548" class="lab" style="fill:#3D3D3A">读法：③ 和 ⑤ 是同一类通道（Noise over WSS 到共享入口），分别由 web 聊天层与原生节点各持一条；入口只做 TLS 终止与 vm_id 转发。</text>
+        <text x="14" y="566" class="lab" style="fill:#3D3D3A">VM 内所有对外访问（⑥）必经 sentinel；连接器登录（⑦）回调落在 VM 内的 authd；用户间互联（⑩）仍经共享入口，不是 P2P。</text>
+        <text x="14" y="584" class="lab" style="fill:#3D3D3A">推断项：模型推理位于 VM 之外（⑨）；证明里的透明日志证明由 VM 携带、客户端离线校验（⑪）。</text>
+        <text x="14" y="608" class="tiny" style="fill:#87867F">每用户 VM 主机名 &lt;vm_id&gt;.metaaivm.com 只是逻辑标识：生产域无 DNS 记录，客户端始终拨 hatch.metaaivm.com 并带 vm_id 参数。</text>
+      </svg>
+      <figcaption><b>图的中心不是 Meta 的 API，而是用户自己的 VM</b>：控制面只负责"把你引到你的 VM 并给你凭据"，之后的对话、工具、文件、记忆都在 VM 与客户端之间的 Noise 隧道里完成。</figcaption>
+    </figure>
+    <div class="card">
+      <table>
+        <tr><th style="width:5%">#</th><th style="width:22%">链路</th><th style="width:30%">协议 / 载体</th><th>鉴权与约束</th></tr>
+        <tr><td>1</td><td>登录</td><td>HTTPS，OIDC（<code>auth.meta.com/oidc</code>）、passkey、OTP、2FA、SSO、设备登录</td><td>得到账号会话；设备 ID 持久于 Keychain（<code>EndoAuthDurableDeviceID</code>）。</td></tr>
+        <tr><td>2</td><td>控制面</td><td>HTTPS JSON，<code>/hatch/*</code>（60 余条）；web 层经原生壳同源代理 <code>/api/hatch/*</code></td><td>账号会话 → <code>auth_token</code> + <code>notary_token</code>；机密 VM 的 <code>delegation.</code> 令牌需客户端 Ed25519 背书；租约 <code>lease_vm</code> / <code>bind-cvm</code> / <code>issue-token</code>。</td></tr>
+        <tr><td>3</td><td>聊天通道</td><td>WSS → <code>hatch.metaaivm.com/v1/noise</code>，参数 vm_id / auth_token / notary_token / app_id / request_id；内层 Noise_XX_25519_AESGCM_SHA256</td><td>入口校验 auth_token 并按 vm_id 转发；握手里 VM 出示 SEV-SNP 证明（绑定其 X25519 静态钥）；机密 VM 还有 RV 密钥 HMAC 互证。</td></tr>
+        <tr><td>4</td><td>入口 → VM</td><td>转发 <code>ingress_rev_proxy.NoiseTransportFrame</code>（分块、AES-GCM 密文）</td><td>边缘不持有 Noise 密钥，看不到明文；VM 网关解密后按 <code>hatch.noise.ServiceRequest.service</code> 分发。</td></tr>
+        <tr><td>5</td><td>节点通道（反向）</td><td>原生 <code>HCHTigonRoutedNoiseGatewayTransport</code>，同样到共享入口；<code>node.register / heartbeat</code>，VM 下发 <code>node.invoke</code></td><td>节点注册绑定 <code>node_id + link_nonce</code>；每个 invoke 过权限门控与 HITL 审批卡；文件结果经 <code>NodeInvokeResultUploader</code>。</td></tr>
+        <tr><td>6</td><td>VM 出网</td><td>透明代理 tproxy，可 MITM，按 SNI 拒绝，网络规则</td><td><code>egress.approvals</code> 按"域名 + 任务"审批；作用域权限（连接器 / 定时任务 / 聊天）；可撤销重置。</td></tr>
+        <tr><td>7</td><td>连接器授权</td><td>OAuth / API key / 用户名密码，回调到 <code>/v1/*-auth/callback</code>（authd）</td><td>凭据进 vault（<code>credentials.*</code>，1Password 集成）；共享给他人时只给描述符不给明文。</td></tr>
+        <tr><td>8</td><td>语音</td><td>rsys WebRTC（STUN/TURN）到 <code>meta-ai-realtime.facebook.com</code>；数据通道跑 Nebula（OpenAI Realtime 形状，Thrift）；ASR WSS；TTS SSE</td><td>由 <code>voice.calls.join</code> / <code>media_endpoint</code> 建立；通话时上报位置（文案明示）。</td></tr>
+        <tr><td>9</td><td>模型推理</td><td><span class="warn">推断</span>：VM 外的推理服务</td><td><code>model.get/set</code> 带 generation；<code>hatch_big_boy_models</code> 开关；模型名在包内被抹掉。</td></tr>
+        <tr><td>10</td><td>用户间互联</td><td>peers：邀请 → SAS 短认证串人工比对 → 收件箱投递；shared agents：对方 VM 经共享入口 + OAuth 令牌，<code>connectionClass=shared_agent</code></td><td>关系带代际号与修订号；共享 agent 连接要求 msg2 必须是证明、拒绝 RV 质询。</td></tr>
+        <tr><td>11</td><td>证明校验</td><td>VM 在 msg2 携带 <code>thatch.attestation.v1.AttestationBundle</code>；客户端本地验证</td><td>VCEK→ASK→ARK 链、CRL、report_data 绑定、度量 ∈ image_manifest、芯片白名单、Plexi/Sigstore 透明证明、吊销证据。</td></tr>
+        <tr><td>12</td><td>IM 渠道</td><td>WhatsApp / Messenger / Telegram companion，<code>channels.link</code></td><td>渠道消息进入 daemon 成为触发源；控制面做渠道绑定。</td></tr>
+        <tr><td>13</td><td>内容与遥测</td><td>fbcdn / rupload.meta.ai / Sparkle appcast（EdDSA）/ QPL、Crashpad、Sentry</td><td>与 VM 隧道无关的旁路。</td></tr>
+      </table>
+      <div class="delta"><b>小结：</b>鉴权发生在三个不同的地方：<b>控制面</b>（你是谁，给你 token）、<b>入口</b>（token 对不对，转给哪台 VM）、<b>VM 内</b>（Noise 对端是谁、RV 密钥对不对、这个动作/这次出网准不准）。边缘只能做第二件事。</div>
+    </div>
+  </section>
+
+  <div class="bridge"><b>全景里鉴权散在三处。</b><span class="to">↓　把它们按先后串成一条链。</span></div>
+
+  <section id="sec-auth">
+    <h2><span class="n">02</span>鉴权与信任链</h2>
+    <p class="sub">从"用户登录"到"agent 真的能删一个文件"，中间要过八道门。每道门验证的对象不同。</p>
+    <figure>
+      <div class="fig-h">图 2 · 八道门<span>上：验证什么 · 下：凭什么</span></div>
+      <svg class="rf" viewBox="0 0 760 330" role="img" aria-label="鉴权与信任链">
+        <defs><marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker></defs>
+        <!-- row 1: gates 1-4 -->
+        <rect class="box" x="14" y="30" width="170" height="104" rx="10"/>
+        <text x="99" y="50" text-anchor="middle" style="fill:#141413;font-weight:600">① 账号</text>
+        <text x="99" y="68" class="tiny" text-anchor="middle" style="fill:#3D3D3A">验证：用户是谁</text>
+        <text x="99" y="84" class="tiny" text-anchor="middle" style="fill:#3D3D3A">凭：OIDC · passkey · 2FA</text>
+        <text x="99" y="100" class="tiny" text-anchor="middle" style="fill:#3D3D3A">产出：账号会话</text>
+        <text x="99" y="118" class="mono" text-anchor="middle" style="fill:#87867F">auth.meta.com</text>
+        <path class="ln" d="M186,82 L200,82" marker-end="url(#m2)"/>
+        <rect class="box" x="204" y="30" width="170" height="104" rx="10"/>
+        <text x="289" y="50" text-anchor="middle" style="fill:#141413;font-weight:600">② 令牌</text>
+        <text x="289" y="68" class="tiny" text-anchor="middle" style="fill:#3D3D3A">验证：会话有效、VM 归属</text>
+        <text x="289" y="84" class="tiny" text-anchor="middle" style="fill:#3D3D3A">凭：会话 → auth_token</text>
+        <text x="289" y="100" class="tiny" text-anchor="middle" style="fill:#3D3D3A">+ notary_token（绑定 vmName）</text>
+        <text x="289" y="118" class="mono" text-anchor="middle" style="fill:#87867F">/api/hatch/token</text>
+        <path class="ln" d="M376,82 L390,82" marker-end="url(#m2)"/>
+        <rect class="box-x" x="394" y="30" width="170" height="104" rx="10"/>
+        <text x="479" y="50" text-anchor="middle" style="fill:#141413;font-weight:600">③ 入口准入</text>
+        <text x="479" y="68" class="tiny" text-anchor="middle" style="fill:#3D3D3A">验证：token 对不对、转给谁</text>
+        <text x="479" y="84" class="tiny" text-anchor="middle" style="fill:#3D3D3A">凭：vm_id + auth_token 查询参数</text>
+        <text x="479" y="100" class="tiny" text-anchor="middle" style="fill:#3D3D3A">机密 VM：客户端 Ed25519 背书</text>
+        <text x="479" y="118" class="mono" text-anchor="middle" style="fill:#87867F">hatch.metaaivm.com</text>
+        <path class="ln" d="M566,82 L580,82" marker-end="url(#m2)"/>
+        <rect class="box-ok" x="584" y="30" width="162" height="104" rx="10"/>
+        <text x="665" y="50" text-anchor="middle" style="fill:#141413;font-weight:600">④ Noise XX</text>
+        <text x="665" y="68" class="tiny" text-anchor="middle" style="fill:#3D3D3A">验证：对端持有静态钥</text>
+        <text x="665" y="84" class="tiny" text-anchor="middle" style="fill:#3D3D3A">凭：X25519 · AES-GCM</text>
+        <text x="665" y="100" class="tiny" text-anchor="middle" style="fill:#3D3D3A">产出：双向 CipherState</text>
+        <text x="665" y="118" class="mono" text-anchor="middle" style="fill:#87867F">msg1 · msg2 · msg3</text>
+        <!-- down connector -->
+        <path class="ln" d="M665,136 L665,150 L99,150 L99,164" marker-end="url(#m2)"/>
+        <!-- row 2: gates 5-8 -->
+        <rect class="box-ok" x="14" y="168" width="170" height="104" rx="10"/>
+        <text x="99" y="188" text-anchor="middle" style="fill:#141413;font-weight:600">⑤ 远程证明</text>
+        <text x="99" y="206" class="tiny" text-anchor="middle" style="fill:#3D3D3A">验证：静态钥属于可信 VM</text>
+        <text x="99" y="222" class="tiny" text-anchor="middle" style="fill:#3D3D3A">凭：SEV-SNP 报告 + 镜像清单</text>
+        <text x="99" y="238" class="tiny" text-anchor="middle" style="fill:#3D3D3A">+ 透明日志 + 芯片白名单</text>
+        <text x="99" y="256" class="mono" text-anchor="middle" style="fill:#87867F">客户端本地校验</text>
+        <path class="ln" d="M186,220 L200,220" marker-end="url(#m2)"/>
+        <rect class="box-ok" x="204" y="168" width="170" height="104" rx="10"/>
+        <text x="289" y="188" text-anchor="middle" style="fill:#141413;font-weight:600">⑥ RV 密钥（机密 VM）</text>
+        <text x="289" y="206" class="tiny" text-anchor="middle" style="fill:#3D3D3A">验证：客户端是之前那个客户端</text>
+        <text x="289" y="222" class="tiny" text-anchor="middle" style="fill:#3D3D3A">凭：首连配发 rvKey，之后</text>
+        <text x="289" y="238" class="tiny" text-anchor="middle" style="fill:#3D3D3A">HMAC-SHA256 双向 proof</text>
+        <text x="289" y="256" class="mono" text-anchor="middle" style="fill:#87867F">hatch.noise-auth.*.v1</text>
+        <path class="ln" d="M376,220 L390,220" marker-end="url(#m2)"/>
+        <rect class="box" x="394" y="168" width="170" height="104" rx="10"/>
+        <text x="479" y="188" text-anchor="middle" style="fill:#141413;font-weight:600">⑦ 请求级授权</text>
+        <text x="479" y="206" class="tiny" text-anchor="middle" style="fill:#3D3D3A">验证：这个客户端可调这个服务</text>
+        <text x="479" y="222" class="tiny" text-anchor="middle" style="fill:#3D3D3A">凭：ServiceFrame.service</text>
+        <text x="479" y="238" class="tiny" text-anchor="middle" style="fill:#3D3D3A">+ x-hatch-notary-authorization</text>
+        <text x="479" y="256" class="mono" text-anchor="middle" style="fill:#87867F">ssh_access 必带 notary 头</text>
+        <path class="ln" d="M566,220 L580,220" marker-end="url(#m2)"/>
+        <rect class="box-x" x="584" y="168" width="162" height="104" rx="10"/>
+        <text x="665" y="188" text-anchor="middle" style="fill:#141413;font-weight:600">⑧ 动作与出网审批</text>
+        <text x="665" y="206" class="tiny" text-anchor="middle" style="fill:#3D3D3A">验证：用户允许这件事吗</text>
+        <text x="665" y="222" class="tiny" text-anchor="middle" style="fill:#3D3D3A">凭：HITL 审批卡 · sentinel</text>
+        <text x="665" y="238" class="tiny" text-anchor="middle" style="fill:#3D3D3A">allow_once / always / deny…</text>
+        <text x="665" y="256" class="mono" text-anchor="middle" style="fill:#87867F">持久化、可撤销</text>
+        <line x1="14" y1="290" x2="746" y2="290" stroke="#F0EEE6" stroke-width="1.5"/>
+        <text x="14" y="310" class="lab" style="fill:#3D3D3A">颜色：灰 = Meta 服务侧验证 · <tspan style="fill:#D97757;font-weight:600">橙 = 入口 / 用户决定</tspan> · <tspan style="fill:#788C5D;font-weight:600">绿 = 在客户端与 VM 之间端到端完成，边缘不参与</tspan></text>
+        <text x="14" y="326" class="tiny" style="fill:#87867F">旁路：节点注册 node_id + link_nonce 把 web 客户端与原生节点绑成一组设备；peers 用 SAS 短认证串人工比对；机密 VM 数据盘以用户 PIN 解锁 LUKS。</text>
+      </svg>
+      <figcaption><b>④⑤⑥ 三道门是这套系统与普通 SaaS 的本质区别</b>：它们让"Meta 的边缘和控制面都看不到对话明文"成为可以被客户端验证的属性，而不只是隐私政策里的承诺。</figcaption>
+    </figure>
+  </section>
+
+  <div class="bridge"><b>过了八道门，agent 才开始干活。</b><span class="to">↓　它干活时和谁交互、走哪条线？</span></div>
+
+  <section id="sec-agent">
+    <h2><span class="n">03</span>Agent 交互能力</h2>
+    <p class="sub">以 VM 内的 daemon 为中心：左边是触发它的输入，右边是它能调用的三类工具后端与外部，下面是它读写的持久化，上面是推理。</p>
+    <figure>
+      <div class="fig-h">图 3 · Agent 交互能力图<span>以 daemon 为中心的输入 · 工具 · 持久化</span></div>
+      <svg class="rf" viewBox="0 0 760 470" role="img" aria-label="Agent 交互能力图">
+        <defs>
+          <marker id="m3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker>
+          <marker id="m3r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B04A3F"/></marker>
+          <marker id="m3b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3A4EC9"/></marker>
+        </defs>
+        <!-- top: inference -->
+        <rect x="280" y="14" width="200" height="44" rx="10" fill="none" stroke="#3A4EC9" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <text x="380" y="32" text-anchor="middle" style="fill:#141413;font-weight:600">模型推理（VM 外，推断）</text>
+        <text x="380" y="48" class="tiny" text-anchor="middle" style="fill:#3D3D3A">model.get/set · generation · 子代理人设</text>
+        <path class="ln-b" d="M380,60 L380,86" marker-end="url(#m3b)"/>
+        <!-- center daemon -->
+        <rect class="box-ok" x="250" y="90" width="260" height="196" rx="12"/>
+        <text x="380" y="112" text-anchor="middle" style="fill:#141413;font-weight:600">daemon · agent 运行时</text>
+        <line x1="266" y1="122" x2="494" y2="122" stroke="#D1CFC5"/>
+        <text x="380" y="140" class="tiny" text-anchor="middle" style="fill:#3D3D3A">会话：主聊 · 线程 · 侧聊 · 目标线程</text>
+        <text x="380" y="156" class="tiny" text-anchor="middle" style="fill:#3D3D3A">轮次：delta.* 事件流，lane main/subagent</text>
+        <text x="380" y="172" class="tiny" text-anchor="middle" style="fill:#3D3D3A">工具路由 → 服务端 / 节点 / VM 浏览器</text>
+        <text x="380" y="188" class="tiny" text-anchor="middle" style="fill:#3D3D3A">HITL 门控：审批卡、持久授权</text>
+        <text x="380" y="204" class="tiny" text-anchor="middle" style="fill:#3D3D3A">compaction · checkpoint · 记忆写入</text>
+        <text x="380" y="220" class="tiny" text-anchor="middle" style="fill:#3D3D3A">调度：cron 任务 · goals 建议 · feed 版次</text>
+        <text x="380" y="236" class="tiny" text-anchor="middle" style="fill:#3D3D3A">能力注册：client / nodes 的 device_commands</text>
+        <text x="380" y="252" class="tiny" text-anchor="middle" style="fill:#3D3D3A">多人：peers 收件箱 · shared agents 作用域</text>
+        <text x="380" y="272" class="mono" text-anchor="middle" style="fill:#87867F">218 条路由 · 5 个服务</text>
+        <!-- left: inputs -->
+        <rect class="box-d" x="14" y="90" width="196" height="40" rx="8"/><text x="112" y="108" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">用户消息</text><text x="112" y="122" class="tiny" text-anchor="middle" style="fill:#3D3D3A">chat.send（web / 手机 / embed）</text>
+        <rect class="box-d" x="14" y="140" width="196" height="40" rx="8"/><text x="112" y="158" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">定时任务</text><text x="112" y="172" class="tiny" text-anchor="middle" style="fill:#3D3D3A">cron · tasks.run · owner_kind=cron</text>
+        <rect class="box-d" x="14" y="190" width="196" height="40" rx="8"/><text x="112" y="208" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">IM 渠道与 peers</text><text x="112" y="222" class="tiny" text-anchor="middle" style="fill:#3D3D3A">WhatsApp / Messenger · peers.inbox</text>
+        <rect class="box-d" x="14" y="240" width="196" height="40" rx="8"/><text x="112" y="258" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">语音与听写</text><text x="112" y="272" class="tiny" text-anchor="middle" style="fill:#3D3D3A">rsys 通话 · Voyager ASR</text>
+        <path class="ln" d="M212,110 L246,130" marker-end="url(#m3)"/><path class="ln" d="M212,160 L246,160" marker-end="url(#m3)"/><path class="ln" d="M212,210 L246,200" marker-end="url(#m3)"/><path class="ln" d="M212,260 L246,240" marker-end="url(#m3)"/>
+        <!-- right: tool backends & external -->
+        <rect class="box" x="550" y="90" width="196" height="40" rx="8"/><text x="648" y="108" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">服务端工具（VM 内）</text><text x="648" y="122" class="tiny" text-anchor="middle" style="fill:#3D3D3A">exec · web_fetch · imagine · zeitgeist</text>
+        <rect class="box-x" x="550" y="140" width="196" height="40" rx="8"/><text x="648" y="158" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">本机节点（Mac / web）</text><text x="648" y="172" class="tiny" text-anchor="middle" style="fill:#3D3D3A">nodes.invoke → 60+ HatchTools</text>
+        <rect class="box" x="550" y="190" width="196" height="40" rx="8"/><text x="648" y="208" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">VM 浏览器任务</text><text x="648" y="222" class="tiny" text-anchor="middle" style="fill:#3D3D3A">browser.lease · takeover · 流附着</text>
+        <rect class="box" x="550" y="240" width="196" height="40" rx="8"/><text x="648" y="258" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">连接器 / 凭据</text><text x="648" y="272" class="tiny" text-anchor="middle" style="fill:#3D3D3A">authd OAuth · vault · 1Password</text>
+        <path class="ln" d="M512,110 L546,110" marker-end="url(#m3)"/><path class="ln-d" d="M512,160 L546,160" marker-end="url(#m3r)"/><path class="ln" d="M512,210 L546,210" marker-end="url(#m3)"/><path class="ln" d="M512,260 L546,260" marker-end="url(#m3)"/>
+        <!-- sentinel gate on the right -->
+        <rect class="box-x" x="550" y="296" width="196" height="34" rx="8"/><text x="648" y="317" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">sentinel 出网审批 → 互联网 / SaaS</text>
+        <path class="ln" d="M648,232 L648,292" marker-end="url(#m3)"/><path class="ln" d="M600,132 L600,292" marker-end="url(#m3)"/>
+        <!-- bottom: persistence -->
+        <rect class="box" x="14" y="356" width="732" height="80" rx="10"/>
+        <text x="30" y="376" style="fill:#141413;font-weight:600">持久化（VM 文件系统，fs.* / library / memory / git）</text>
+        <text x="30" y="394" class="tiny" style="fill:#3D3D3A">/home/hatch/workspace/{your_files, artifacts, podcasts, conversations/{id}/transcript} · uploads/ · /MEMORY.md · /media/raw/</text>
+        <text x="30" y="410" class="tiny" style="fill:#3D3D3A">资料库 8 分区 = fs.library 视图 · Spaces 由 VM 内进程响应 /spaces/cvm/{slug} · fs.subscribe 实时推送 · 机密 VM 下为 LUKS 加密盘（PIN 解锁）</text>
+        <text x="30" y="426" class="tiny" style="fill:#3D3D3A">同步进来的本机数据副本：Calendar · Contacts · Email · iMessage · Notes · Reminders（Endo*SyncSource）</text>
+        <path class="ln" d="M380,288 L380,352" marker-end="url(#m3)"/><path class="ln" d="M396,352 L396,288" marker-end="url(#m3)"/>
+        <text x="14" y="458" class="tiny" style="fill:#87867F">赤色虚线 = VM 反向调用本机（经节点通道、受 HITL 门控）；蓝点线 = 推断。daemon 右侧四类后端中只有"本机节点"在用户设备上执行，其余在 VM 内。</text>
+      </svg>
+      <figcaption><b>agent 的"能力"在拓扑上是四个出口加一个入口</b>：四个出口（服务端工具、本机节点、VM 浏览器、连接器）决定它能做什么，一个入口（sentinel）决定它能联系谁；持久化层让这些行为可回看、可搜索、可共享。</figcaption>
+    </figure>
+    <div class="g3">
+      <div class="card"><h3>能力出口 ① 服务端工具</h3><div class="tag">exec · web_fetch · imagine · zeitgeist</div><p>在 VM 内执行，出网经 sentinel。审批图标把 <code>tool.exec</code> 标为"地球"，推断为带网络的执行环境；"Hatch folder" 之外运行程序需额外授权。</p></div>
+      <div class="card"><h3>能力出口 ② 本机节点</h3><div class="tag">nodes.sync → invoke → invoke_ack / result</div><p>唯一在用户设备上执行的出口。电脑控制在后台虚拟显示器进行，文件、邮件、信息、日历等工具各有读/写/动作三级授权；web 客户端自己也是节点，接受 <code>ui.navigate.*</code> 等 27 个 UI 命令。</p></div>
+      <div class="card"><h3>能力出口 ③④ 浏览器与连接器</h3><div class="tag">browser_task.* · authd · vault</div><p>VM 内租用浏览器执行网页任务，用户可随时 takeover；连接器 OAuth 回调落在 authd，凭据存 vault，<code>credentials.capture</code> 可从浏览器登录中捕获凭据。</p></div>
+    </div>
+  </section>
+
+  <section id="sec-notes">
+    <h2><span class="n">04</span>图例与边界</h2>
+    <p class="sub">三张图都基于前两篇报告的静态证据，这里统一说明记号与未验证项。</p>
+    <div class="legend" style="margin-top:0">
+      <span><i class="chip d"></i>客户端 / 外部输入</span>
+      <span><i class="chip"></i>Meta 服务或外部系统</span>
+      <span><i class="chip x"></i>入口与审批（关键控制点）</span>
+      <span><i class="chip ok"></i>VM 内，端到端加密之内</span>
+      <span><i class="chip line"></i>观察到的链路</span>
+      <span><i class="chip line red"></i>VM 反向调用本机</span>
+      <span><i class="chip line green"></i>Noise 会话</span>
+      <span><i class="chip line blue"></i>推断</span>
+    </div>
+    <div class="note">
+      <h2>未验证的推断</h2>
+      <ul>
+        <li><strong>模型推理的位置</strong>：图中放在 VM 外，依据是 Meta 的常规架构与 <code>model.set</code> 的 generation 版本化；也可能部分在 VM 内。需要运行时观察 sentinel 的出网审批或 <code>/model</code> 响应。</li>
+        <li><strong>入口对 auth_token 的校验方式</strong>：只观察到参数名与匿名 401；校验细节（JWT 还是不透明令牌、是否绑定 app_id）未知。</li>
+        <li><strong>节点通道是否也走 <code>/v1/noise</code></strong>：原生字符串里有 <code>/v1/noise</code> 与 <code>sharedIngressDialUrl</code>，但未看到完整 URL 构造；图中按同一入口绘制。</li>
+        <li><strong>透明日志的在线查询</strong>：代码里 Plexi / Sigstore 证明随证明包携带、客户端离线校验；是否还会在线查询日志未见证据。</li>
+        <li><strong>peers 的实际传输</strong>：路由在 daemon 下，经共享入口可解释；是否存在 VM 到 VM 的直接链路未知。</li>
+      </ul>
+    </div>
+  </section>
+  </main>
+</div>
+
+<script>
+const links=[...document.querySelectorAll('#toc a')];
+const spy=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)links.forEach(a=>a.classList.toggle('on',a.dataset.sec===e.target.id))})},{rootMargin:'-10% 0px -72% 0px',threshold:0});
+links.forEach(a=>{const s=document.getElementById(a.dataset.sec);if(s)spy.observe(s)});
+links.forEach(a=>a.addEventListener('click',ev=>{ev.preventDefault();const s=document.getElementById(a.dataset.sec);if(s)s.scrollIntoView({behavior:'smooth',block:'start'});history.replaceState(null,'','#'+a.dataset.sec)}));
+(()=>{const NS='http://www.w3.org/2000/svg';const layer=document.getElementById('annLayer'),bar=document.getElementById('annBar'),launch=document.getElementById('annLaunch'),toggle=document.getElementById('annToggle'),colorEl=document.getElementById('annColor'),sizeEl=document.getElementById('annSize');let on=false,tool='pen',drawing=false,cur=null,pts=[];const strokes=[];let fitting=false;
+const fit=()=>{if(fitting)return;fitting=true;layer.style.width='0px';layer.style.height='0px';const w=document.documentElement.clientWidth;const h=Math.max(document.documentElement.scrollHeight,document.body.scrollHeight);layer.setAttribute('width',w);layer.setAttribute('height',h);layer.setAttribute('viewBox',`0 0 ${w} ${h}`);layer.style.width=w+'px';layer.style.height=h+'px';fitting=false};
+fit();addEventListener('resize',fit);new ResizeObserver(fit).observe(document.body);
+const setOn=v=>{on=v;document.body.classList.toggle('ann-on',on);toggle.textContent=on?'标注中':'开启标注';toggle.classList.toggle('on',on)};
+document.querySelectorAll('.ann-tool').forEach(b=>b.addEventListener('click',()=>{tool=b.dataset.tool;document.querySelectorAll('.ann-tool').forEach(x=>x.classList.toggle('on',x===b));if(!on)setOn(true);strokes.forEach(s=>{s.style.pointerEvents=tool==='eraser'?'stroke':'none'})}));
+toggle.addEventListener('click',()=>setOn(!on));
+document.getElementById('annUndo').addEventListener('click',()=>{const last=strokes.pop();if(last)last.remove()});
+document.getElementById('annClear').addEventListener('click',()=>{while(strokes.length)strokes.pop().remove()});
+document.getElementById('annHide').addEventListener('click',()=>{setOn(false);bar.classList.add('hidden');launch.classList.add('show')});
+launch.addEventListener('click',()=>{bar.classList.remove('hidden');launch.classList.remove('show')});
+const at=e=>{const r=layer.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
+layer.addEventListener('pointerdown',e=>{if(!on||e.button!==0||tool==='eraser')return;e.preventDefault();layer.setPointerCapture(e.pointerId);drawing=true;pts=[at(e)];cur=document.createElementNS(NS,'path');const w=+sizeEl.value;cur.setAttribute('fill','none');cur.setAttribute('stroke',colorEl.value);cur.setAttribute('stroke-linecap','round');cur.setAttribute('stroke-linejoin','round');if(tool==='mark'){cur.setAttribute('stroke-width',w*3.2);cur.setAttribute('stroke-opacity','0.32');cur.style.mixBlendMode='multiply'}else{cur.setAttribute('stroke-width',w)}cur.style.pointerEvents='none';cur.setAttribute('d',`M${pts[0][0]},${pts[0][1]}`);layer.appendChild(cur)});
+layer.addEventListener('pointermove',e=>{if(!drawing)return;const p=at(e),last=pts[pts.length-1];if(Math.hypot(p[0]-last[0],p[1]-last[1])<1.6)return;pts.push(p);cur.setAttribute('d',cur.getAttribute('d')+`L${p[0]},${p[1]}`)});
+const end=()=>{if(!drawing)return;drawing=false;if(pts.length<2){cur.remove()}else{strokes.push(cur)}cur=null};
+layer.addEventListener('pointerup',end);layer.addEventListener('pointercancel',end);
+layer.addEventListener('pointerover',e=>{if(on&&tool==='eraser'&&e.target!==layer){const i=strokes.indexOf(e.target);if(i>-1){strokes.splice(i,1);e.target.remove()}}});
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='Escape'&&on)setOn(false);if((e.metaKey||e.ctrlKey)&&e.key==='z'&&on){e.preventDefault();const last=strokes.pop();if(last)last.remove()}});})();
+</script>
+</body>
+</html>
