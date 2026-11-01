@@ -192,14 +192,15 @@
     <nav class="toc" id="toc">
       <a href="#sec-thesis" data-sec="sec-thesis"><span class="num">01</span><span>结论</span></a>
       <a href="#sec-infra" data-sec="sec-infra"><span class="num">02</span><span>基础设施全景</span></a>
-      <a href="#sec-client" data-sec="sec-client"><span class="num">03</span><span>客户端架构</span></a>
-      <a href="#sec-flow" data-sec="sec-flow"><span class="num">04</span><span>数据流：一条消息</span></a>
-      <a href="#sec-net" data-sec="sec-net"><span class="num">05</span><span>组网与协议</span></a>
-      <a href="#sec-link" data-sec="sec-link"><span class="num">06</span><span>本机与 VM 互联</span></a>
-      <a href="#sec-cap" data-sec="sec-cap"><span class="num">07</span><span>Agent 能力</span></a>
-      <a href="#sec-sec" data-sec="sec-sec"><span class="num">08</span><span>安全与隐私模型</span></a>
-      <a href="#sec-gap" data-sec="sec-gap"><span class="num">09</span><span>待补充分析</span></a>
-      <a href="#sec-method" data-sec="sec-method"><span class="num">10</span><span>方法与证据边界</span></a>
+      <a href="#sec-gateway" data-sec="sec-gateway"><span class="num">03</span><span>网关入口深潜</span></a>
+      <a href="#sec-client" data-sec="sec-client"><span class="num">04</span><span>客户端架构</span></a>
+      <a href="#sec-flow" data-sec="sec-flow"><span class="num">05</span><span>数据流：一条消息</span></a>
+      <a href="#sec-net" data-sec="sec-net"><span class="num">06</span><span>组网与协议</span></a>
+      <a href="#sec-link" data-sec="sec-link"><span class="num">07</span><span>本机与 VM 互联</span></a>
+      <a href="#sec-cap" data-sec="sec-cap"><span class="num">08</span><span>Agent 能力</span></a>
+      <a href="#sec-sec" data-sec="sec-sec"><span class="num">09</span><span>安全与隐私模型</span></a>
+      <a href="#sec-gap" data-sec="sec-gap"><span class="num">10</span><span>待补充分析</span></a>
+      <a href="#sec-method" data-sec="sec-method"><span class="num">11</span><span>方法与证据边界</span></a>
     </nav>
     <div class="navhint">点击目录跳转 · 正文连续滚动 · 右侧可圈画标注</div>
   </aside>
@@ -305,14 +306,124 @@
     </div>
   </section>
 
-  <div class="bridge"><b>服务端以 VM 为核心。</b><span class="to">↓　客户端这边又是怎么分层的，谁负责说话、谁负责动手？</span></div>
+    <div class="bridge"><b>拓扑里那条绿色的 Noise 会话，是整个系统的咽喉。</b><span class="to">↓　把网关入口拆开看：地址怎么定、凭据怎么来、握手证明什么、握手后跑什么。</span></div>
+
+  <section id="sec-gateway">
+    <h2><span class="n">03</span>网关入口深潜</h2>
+    <p class="sub">本节全部来自 web 客户端中的源码片段与内嵌 protobuf 描述符（已解码出 5 个 .proto 的消息和字段名），辅以原生侧的类名与诊断文案。结论：网关是一个 <strong>"ingress 反向代理 + Noise 隧道 + 多路复用 HTTP"</strong> 的三层结构，机密 VM 再叠加一层 SEV-SNP 远程证明与客户端持有的验证密钥。</p>
+
+    <div class="card">
+      <table>
+        <tr><th style="width:18%">维度</th><th>观察到的事实</th></tr>
+        <tr><td>地址</td><td>每用户 VM 主机名 <code>&lt;vm_id&gt;.metaaivm.com</code>，vm_id 是 UUID（带连字符或 32 位十六进制），测试环境后缀 <code>.test-only.metaaivm.com</code>；共享入口 <code>hatch.metaaivm.com</code>；统一路径 <code>/v1/noise</code>。web 代码把 VM 称作 "Feather VM"。</td></tr>
+        <tr><td>查询参数</td><td><code>vm_id</code> · <code>auth_token</code> · <code>notary_token</code>（可选）· <code>app_id=endo-macos</code> · <code>app_version</code>（从 UA 标记 <code>HatchMac/x</code> 取）· <code>request_id</code> · 可选 <code>atod_token</code>（<code>use_od=1</code> 时，接内部 on-demand 环境）。浏览器 embed 环境可不带 vm_id，由网关按身份解析。</td></tr>
+        <tr><td>凭据来源</td><td><code>POST /api/hatch/token {vmAddress, vmName, force_refresh}</code> → <code>{token, notary_token}</code>；<code>POST /api/hatch/noise-notary-token {vmName}</code> → <code>{notaryToken}</code>。这些 <code>/api/hatch/*</code> 对 web 层是同源路径，由原生壳（<code>hatchAPIBaseURL</code>、<code>SandboxSchemeHandler</code>）代理到 Meta 控制面，带用户登录态。</td></tr>
+        <tr><td>Notary 委托</td><td>若 notary_token 形如 <code>delegation.&lt;ver&gt;.&lt;a&gt;.&lt;b&gt;</code>，客户端用按 VM 保存的 <strong>Ed25519 签名密钥</strong>（WebCrypto，不可导出）对 <code>{"uri":"/v1/noise"}</code> 签名，生成 <code>endorsement.&lt;ver&gt;.&lt;a&gt;.&lt;b&gt;.&lt;sig&gt;</code>。HTTP 请求用头 <code>x-hatch-notary-authorization</code> 携带；SSH 访问令牌在 <code>/api/hatch/ssh-access/tokens</code> 以同名头铸造。</td></tr>
+        <tr><td>外层传输</td><td>WSS（TLS）内再跑 Noise，即<strong>双层加密</strong>；原生侧同一套语义走 Tigon 的 HTTP 双工流或 WebSocket（<code>HCHNoiseGatewayDuplexStream</code>、<code>HCHNoiseWebSocketTransportPolicy</code>），并做 preconnect。</td></tr>
+      </table>
+      <div class="delta"><b>小结：</b>入口的身份由三样东西共同确定：登录态换来的 <b>auth_token</b>、绑定 VM 的 <b>notary_token</b>（机密 VM 下还要客户端密钥背书）、以及握手里 VM 对自己身份的<b>证明</b>。</div>
+    </div>
+
+    <figure style="margin-top:16px">
+      <div class="fig-h">图 2 · Noise XX 握手与证明<span>左：客户端 · 右：VM 网关（ingress 反向代理）</span></div>
+      <svg class="rf" viewBox="0 0 760 330" role="img" aria-label="Noise 握手序列">
+        <defs>
+          <marker id="ag1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker>
+          <marker id="ag1o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#788C5D"/></marker>
+        </defs>
+        <rect class="box-d" x="14" y="14" width="150" height="34" rx="8"/><text x="89" y="36" text-anchor="middle" style="fill:#141413;font-weight:600">客户端（web / 原生）</text>
+        <rect class="box-ok" x="596" y="14" width="150" height="34" rx="8"/><text x="671" y="36" text-anchor="middle" style="fill:#141413;font-weight:600">VM 网关</text>
+        <line x1="89" y1="48" x2="89" y2="316" stroke="#D1CFC5" stroke-width="1.5" stroke-dasharray="3 4"/>
+        <line x1="671" y1="48" x2="671" y2="316" stroke="#D1CFC5" stroke-width="1.5" stroke-dasharray="3 4"/>
+        <text x="380" y="70" class="tiny" text-anchor="middle" style="fill:#3D3D3A">0. WSS 连接 /v1/noise?vm_id&amp;auth_token&amp;notary_token&amp;app_id&amp;request_id</text>
+        <path class="ln" d="M100,76 L660,76" marker-end="url(#ag1)"/>
+        <text x="380" y="104" class="tiny" text-anchor="middle" style="fill:#3D3D3A">1. msg1 = e ‖ enc(client_nonce 32B)　（协议名 Noise_XX_25519_AESGCM_SHA256）</text>
+        <path class="ln" d="M100,110 L660,110" marker-end="url(#ag1)"/>
+        <text x="380" y="138" class="tiny" text-anchor="middle" style="fill:#3D3D3A">2. msg2 = e ‖ enc(s) ‖ enc(payload)　payload = AttestationBundle 或 RV 质询{attestation, state, vm_nonce, vm_proof?, chip_binding?}</text>
+        <path class="ln-ok" d="M660,144 L100,144" marker-end="url(#ag1o)"/>
+        <rect class="box-x" x="110" y="156" width="540" height="58" rx="8"/>
+        <text x="380" y="174" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">客户端本地校验（机密 VM）：</text>
+        <text x="380" y="190" class="tiny" text-anchor="middle" style="fill:#3D3D3A">SNP 签名链 VCEK→ASK→ARK · CRL · report_data 绑定 VM 的 X25519 公钥 + nonce · 度量值 ∈ manifest</text>
+        <text x="380" y="206" class="tiny" text-anchor="middle" style="fill:#3D3D3A">芯片白名单 · 透明日志证明（Cloudflare Plexi / Sigstore）· 吊销列表 · 硬件策略 · 验证时间</text>
+        <text x="380" y="236" class="tiny" text-anchor="middle" style="fill:#3D3D3A">3. msg3 = enc(s) ‖ enc(payload)　payload = {token, fresh_key | credential, client_proof = HMAC(rvKey, 域 ‖ 握手哈希 ‖ nonces)}</text>
+        <path class="ln" d="M100,242 L660,242" marker-end="url(#ag1)"/>
+        <text x="380" y="270" class="tiny" text-anchor="middle" style="fill:#3D3D3A">4. split() → 收发两个 CipherState；之后每帧 AES-GCM，附加数据为空</text>
+        <path class="ln-ok" d="M100,276 L660,276" marker-end="url(#ag1o)"/>
+        <path class="ln-ok" d="M660,284 L100,284" marker-end="url(#ag1o)"/>
+        <text x="380" y="310" class="lab" text-anchor="middle" style="fill:#3D3D3A">握手超时 10 s · 取 token 10 s · 取 notary 8 s · 单请求 60 s</text>
+      </svg>
+      <figcaption><b>Noise XX 只保证"对端持有某个静态密钥"，Muse 在 msg2 把这个静态密钥写进 SEV-SNP 报告的 report_data</b>，于是"我在和一台跑着已知镜像的机密 VM 说话"成为可在客户端验证的命题；msg3 的 HMAC 证明则让 VM 反过来确认客户端持有此前配发的验证密钥（rvKey）。标准 VM 的 msg2 只带证明包、没有 RV 质询，客户端按 "standard" 处理。</figcaption>
+    </figure>
+
+    <div class="g2">
+      <div class="card">
+        <h3>机密 VM 的配发状态机</h3><div class="tag">RV challenge · state 1 未配发 / 2 已配发</div>
+        <p>msg2 的 RV 质询是一个 protobuf：字段 1 证明包、字段 2 状态、字段 3 VM nonce（32 B）、字段 4 VM proof（仅已配发时，32 B）、字段 5 芯片绑定。<b>未配发</b>（首次连接）时客户端必须先通过芯片白名单校验（verdict <code>accepted_chip_pinned</code>）才允许"密钥披露"（<code>authorizeKeyDisclosure</code>），把新生成的 rvKey 交给 VM；<b>已配发</b>时先验 VM proof，再以 HMAC-SHA256 构造 client proof 回应。密钥派生域：<code>hatch.noise-auth.key.v1</code>，标签 <code>vm-proof-key</code> / <code>client-proof-key</code>，证明域 <code>hatch.noise-auth.vm-proof.v1</code> / <code>client-proof.v1</code>。</p>
+        <p>另有 CVM 替换/迁移流程（<code>noiseCvmReplacementState</code>、<code>cvm-replace-state</code>、"migrate_from_svm"）和周期性 PIN 复核；原生侧对应 <code>HCHNoiseRVCredentials</code>、<code>HCHNoiseChipPolicy</code>、<code>HCHNoiseSnpTransparencyPolicy</code>、<code>rejectLegacyPeer</code>。</p>
+      </div>
+      <div class="card">
+        <h3>证明包的结构（thatch.attestation.v1）</h3><div class="tag">从内嵌 attestation_bundle.proto 解码</div>
+        <ul class="rkv">
+          <li><b>AttestationBundle</b>：platform（NON_TEE | AMD_SEV_SNP）· report_data_input · snp · image_manifest · revocation_evidence</li>
+          <li><b>ReportDataInput</b>：x25519_public_key（VM 的 Noise 静态公钥）· client_nonce</li>
+          <li><b>SnpEvidence</b>：report · certs{vcek_pem, ask_pem, crl}</li>
+          <li><b>image_manifest</b>：JSON，含允许的 launch digests，报告度量值必须命中其一</li>
+          <li><b>TransparencyProof</b>：sigstore · cloudflare（Plexi 的 Epoch / SignatureMessage，即镜像清单上了密钥透明日志）</li>
+          <li><b>RevocationEvidence</b>：serialized_rl + transparency_proof（吊销列表亦需透明证明）</li>
+          <li>VCEK 扩展交叉核对 OID：chip_id <code>1.3.6.1.4.1.3704.1.4</code>，TCB bootloader/TEE/SNP/microcode/FMC</li>
+        </ul>
+      </div>
+    </div>
+
+    <figure style="margin-top:16px">
+      <div class="fig-h">图 3 · 握手之后：三层封装与五个服务<span>外层分块 · 内层多路复用 · 路由到 VM 内服务</span></div>
+      <svg class="rf" viewBox="0 0 760 300" role="img" aria-label="Noise 隧道内的协议栈">
+        <defs><marker id="ag2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker></defs>
+        <rect class="box-d" x="14" y="14" width="732" height="40" rx="8"/>
+        <text x="30" y="31" style="fill:#141413;font-weight:600">WSS 帧（TLS）</text>
+        <text x="30" y="47" class="tiny" style="fill:#3D3D3A">binaryType=arraybuffer；原生侧可为 Tigon HTTP 双工流</text>
+        <rect class="box" x="14" y="64" width="732" height="52" rx="8"/>
+        <text x="30" y="82" style="fill:#141413;font-weight:600">ingress_rev_proxy.NoiseTransportFrame</text>
+        <text x="30" y="98" class="tiny" style="fill:#3D3D3A">{chunk_id int64, chunk_index, total_chunks, payload}　单块 ≤ 65 489 B · ≤ 256 块 · 组装 ≤ 16 MiB · 60 s TTL · 最多 16 个并行组装</text>
+        <text x="30" y="110" class="tiny" style="fill:#87867F">payload = AES-GCM 密文（Noise CipherState，nonce 递增）</text>
+        <rect class="box-x" x="14" y="126" width="732" height="70" rx="8"/>
+        <text x="30" y="144" style="fill:#141413;font-weight:600">hatch.noise.ServiceRequest / ServiceResponse</text>
+        <text x="30" y="160" class="tiny" style="fill:#3D3D3A">{service: ServiceType, payload: ServiceFrame}　ServiceFrame{stream_id, kind = request | response | body_chunk | reset}</text>
+        <text x="30" y="176" class="tiny" style="fill:#3D3D3A">ApplicationRequest{verb, path, headers[], body, end_body} · ApplicationResponse{status, headers, body, end_body} · BodyChunk</text>
+        <text x="30" y="190" class="tiny" style="fill:#3D3D3A">Reset{code: CANCELLED | TIMEOUT | PROTOCOL_ERROR | REFUSED_STREAM | INTERNAL_ERROR | SERVICE_UNAVAILABLE, reason}</text>
+        <rect class="box-ok" x="14" y="206" width="136" height="80" rx="8"/><text x="82" y="226" text-anchor="middle" style="fill:#141413;font-weight:600">daemon</text><text x="82" y="244" class="tiny" text-anchor="middle" style="fill:#3D3D3A">agent 主进程</text><text x="82" y="258" class="tiny" text-anchor="middle" style="fill:#3D3D3A">chat / fs / library</text><text x="82" y="272" class="tiny" text-anchor="middle" style="fill:#3D3D3A">tasks / goals / peers…</text>
+        <rect class="box-ok" x="163" y="206" width="136" height="80" rx="8"/><text x="231" y="226" text-anchor="middle" style="fill:#141413;font-weight:600">sentinel</text><text x="231" y="244" class="tiny" text-anchor="middle" style="fill:#3D3D3A">出网管控</text><text x="231" y="258" class="tiny" text-anchor="middle" style="fill:#3D3D3A">approvals · permissions</text><text x="231" y="272" class="tiny" text-anchor="middle" style="fill:#3D3D3A">tproxy · mitm · SNI</text>
+        <rect class="box-ok" x="312" y="206" width="136" height="80" rx="8"/><text x="380" y="226" text-anchor="middle" style="fill:#141413;font-weight:600">vault</text><text x="380" y="244" class="tiny" text-anchor="middle" style="fill:#3D3D3A">加密盘与凭据</text><text x="380" y="258" class="tiny" text-anchor="middle" style="fill:#3D3D3A">/luks/status</text><text x="380" y="272" class="tiny" text-anchor="middle" style="fill:#3D3D3A">/v1/credentials/*</text>
+        <rect class="box-ok" x="461" y="206" width="136" height="80" rx="8"/><text x="529" y="226" text-anchor="middle" style="fill:#141413;font-weight:600">authd</text><text x="529" y="244" class="tiny" text-anchor="middle" style="fill:#3D3D3A">连接器 OAuth 回调</text><text x="529" y="258" class="tiny" text-anchor="middle" style="fill:#3D3D3A">/v1/oauth/callback</text><text x="529" y="272" class="tiny" text-anchor="middle" style="fill:#3D3D3A">api-key · 用户名密码</text>
+        <rect class="box-ok" x="610" y="206" width="136" height="80" rx="8"/><text x="678" y="226" text-anchor="middle" style="fill:#141413;font-weight:600">ssh_access</text><text x="678" y="244" class="tiny" text-anchor="middle" style="fill:#3D3D3A">运维入口</text><text x="678" y="258" class="tiny" text-anchor="middle" style="fill:#3D3D3A">/v1/ssh/operator/*</text><text x="678" y="272" class="tiny" text-anchor="middle" style="fill:#3D3D3A">需 notary 授权头</text>
+      </svg>
+      <figcaption><b>所谓"网关"其实是 VM 边界上的反向代理</b>（proto 包名就叫 ingress_rev_proxy）：它终止 Noise，把每个 stream 按 ServiceType 分发给 VM 内的五个服务。218 条路由里 <code>service</code> 标记的分布为 daemon 45、sentinel 23、authd 17、ssh_access 2、vault 1，未标记的默认走 daemon；还出现一次 <code>expedia</code>，对应酒店连接器。</figcaption>
+    </figure>
+
+    <div class="card">
+      <table>
+        <tr><th style="width:22%">语义</th><th>做法</th></tr>
+        <tr><td>请求 / 响应</td><td>一次 RPC = 一个 stream_id 上的 request 帧 → response 帧（+ 若干 body_chunk）。JSON 响应约定 <code>{ok:true, result}</code>；非 2xx 转为网关错误。</td></tr>
+        <tr><td>流式</td><td><code>streamMode: subscription</code>（先回 ack，再持续推 NDJSON 记录，如 <code>chat.stream_events</code>、<code>*.subscribe</code>）与 <code>records</code>（纯记录流）。<code>maxRecordBytes</code> 限单条大小。</td></tr>
+        <tr><td>大对象</td><td><code>channel: media</code> + <code>responseType: binary</code>（<code>fs.raw</code>、缩略图、Space 渲染、头像），可设 <code>maxResponseBytes</code>；<code>fs.raw</code> 不设上限。</td></tr>
+        <tr><td>超时与取消</td><td>默认 60 s，个别路由单独设（幻灯片重建 180 s，peers 写入 6 min）；取消发 Reset(CANCELLED)。</td></tr>
+        <tr><td>连接类别</td><td>默认连接到自己的 VM；<code>connectionClass: shared_agent</code> 的路由（<code>shared_agents.remote.open/send</code>）走共享入口 <code>wss://hatch.metaaivm.com/v1/noise</code>，参数 <code>vm_id</code> 为对方 VM、<code>auth_token</code> 为 Shared Agent 的 OAuth 令牌，msg1 用专门的 shared-agent 载荷，并要求 msg2 必须是证明（拒绝 RV 质询）。</td></tr>
+        <tr><td>noiseOnly</td><td>约三分之一路由标 <code>noiseOnly</code>（聊天流、模型、客户端能力、节点回执、邮箱、艺术品置顶等），其余理论上也可经普通 HTTPS 到达，但 web 包里未见到绕开 Noise 的直连实现。</td></tr>
+        <tr><td>重连</td><td>WS 关闭码 1012 / 1013（服务重启 / 稍后再试）触发 "service notice" 并重连；页面恢复（resume）重连；连接状态 connecting / connected / reconnecting / unavailable，失败原因 auth_failed / gateway_unreachable / gateway_reconnect_exhausted / browser_offline。恢复宽限 10 s，"VM 预热"上限 5 min；embed 环境 45 s 无响应探活、15 s 无进展重连。原生 <code>[HatchClient]</code> 有托管重试与 keepalive 确认超时。</td></tr>
+        <tr><td>可观测性</td><td>每次连接带 request_id 与 QPL 标记点（ws_connect / ws_open / noise_ready），记录 x25519 后端、握手各阶段毫秒；开发者"Noise inspector"可回放请求但屏蔽敏感服务与凭据相关方法。</td></tr>
+      </table>
+      <div class="delta"><b>小结：</b>这套入口把<b>传输安全</b>（TLS）、<b>端到端信道</b>（Noise）、<b>对端可信度</b>（SNP 证明 + 透明日志）、<b>客户端持续身份</b>（rvKey HMAC）和<b>应用多路复用</b>（ServiceFrame）分成五层各管一事，客户端代码也按这五层组织；要做协议级验证，抓到 WSS 明文后仍需先解 Noise，再解两层 protobuf。</div>
+    </div>
+  </section>
+
+<div class="bridge"><b>服务端以 VM 为核心。</b><span class="to">↓　客户端这边又是怎么分层的，谁负责说话、谁负责动手？</span></div>
 
   <section id="sec-client">
-    <h2><span class="n">03</span>客户端架构</h2>
+    <h2><span class="n">04</span>客户端架构</h2>
     <p class="sub">Mac 应用是一个<strong>原生壳 + 内嵌 web 聊天层 + 原生工具层</strong>的三明治。源码路径泄露了模块划分（<code>fbobjc/Apps/Internal/Endo/Sources/…</code>）。</p>
 
     <figure>
-      <div class="fig-h">图 2 · 客户端分层<span>上：界面 · 中：两条到 VM 的会话 · 下：本机能力与基础库</span></div>
+      <div class="fig-h">图 4 · 客户端分层<span>上：界面 · 中：两条到 VM 的会话 · 下：本机能力与基础库</span></div>
       <svg class="rf" viewBox="0 0 760 300" role="img" aria-label="客户端分层">
         <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker></defs>
         <!-- UI layer -->
@@ -374,11 +485,11 @@
   <div class="bridge"><b>说话的和动手的分开了。</b><span class="to">↓　那么一条消息从输入到回复，到底走了哪几跳？</span></div>
 
   <section id="sec-flow">
-    <h2><span class="n">04</span>数据流：一条消息的一生</h2>
+    <h2><span class="n">05</span>数据流：一条消息的一生</h2>
     <p class="sub">以"用户让 agent 整理 Mac 上的一个文件夹"为例，把<strong>聊天通道</strong>和<strong>工具通道</strong>两条路串起来。每一步都标了对应的协议标识。</p>
 
     <figure>
-      <div class="fig-h">图 3 · 聊天通道与工具通道<span>上半：对话 · 下半：VM 反向调用 Mac 工具</span></div>
+      <div class="fig-h">图 5 · 聊天通道与工具通道<span>上半：对话 · 下半：VM 反向调用 Mac 工具</span></div>
       <svg class="rf" viewBox="0 0 760 340" role="img" aria-label="消息数据流">
         <defs>
           <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker>
@@ -471,7 +582,7 @@
   <div class="bridge"><b>消息走的是两条 Noise 会话。</b><span class="to">↓　把所有出现的组网与传输技术摊开看一遍，哪些是主线、哪些只是基础库带进来的。</span></div>
 
   <section id="sec-net">
-    <h2><span class="n">05</span>组网与传输技术</h2>
+    <h2><span class="n">06</span>组网与传输技术</h2>
     <p class="sub">按"<strong>在 Muse 里实际承担什么</strong>"分三类：控制面、媒体面、以及随 Meta 基础库进入但未见专门用途的。</p>
 
     <div class="card">
@@ -496,11 +607,11 @@
   <div class="bridge"><b>传输层清楚了。</b><span class="to">↓　回到最关心的问题：本机操作和远程机器操作究竟怎么接在一起？</span></div>
 
   <section id="sec-link">
-    <h2><span class="n">06</span>本机与远程 VM 的互联</h2>
+    <h2><span class="n">07</span>本机与远程 VM 的互联</h2>
     <p class="sub">"远程机器"就是用户的 VM。本机与它之间有<strong>四条互联路径</strong>，再加上电脑控制的一套独特实现。</p>
 
     <figure>
-      <div class="fig-h">图 4 · 四条互联路径<span>左：Mac 本机 · 右：VM</span></div>
+      <div class="fig-h">图 6 · 四条互联路径<span>左：Mac 本机 · 右：VM</span></div>
       <svg class="rf" viewBox="0 0 760 300" role="img" aria-label="本机与 VM 互联路径">
         <defs>
           <marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker>
@@ -556,7 +667,7 @@
   <div class="bridge"><b>互联路径有四条，方向各不相同。</b><span class="to">↓　跑在这些路径上的，到底是哪些具体能力？</span></div>
 
   <section id="sec-cap">
-    <h2><span class="n">07</span>Agent 能力清单</h2>
+    <h2><span class="n">08</span>Agent 能力清单</h2>
     <p class="sub">分三块：<strong>本机工具</strong>（原生节点执行）、<strong>VM 侧能力</strong>（网关 RPC 暴露）、<strong>连接器与渠道</strong>。工具名与描述均直接取自二进制。</p>
 
     <div class="card">
@@ -610,7 +721,7 @@
   <div class="bridge"><b>能力很多，而且不少是高权限的。</b><span class="to">↓　它用什么机制约束这些能力？</span></div>
 
   <section id="sec-sec">
-    <h2><span class="n">08</span>安全与隐私模型</h2>
+    <h2><span class="n">09</span>安全与隐私模型</h2>
     <p class="sub">从客户端能看到的约束分五层，由外到内。</p>
     <div class="g3">
       <div class="card"><h3>链路</h3><div class="tag">Noise + 证明</div><p>两条通道均 Noise 加密；机密 VM 由客户端校验 SEV-SNP 报告（<code>hatch_attestation_verifier</code>：VCEK 链、度量策略、芯片白名单 <code>HCHNoiseChipPolicy</code>），并拒绝对 VM 域名的明文 HTTP。</p></div>
@@ -626,7 +737,7 @@
   <div class="bridge"><b>约束机制看得见，但多数只能从文案推断。</b><span class="to">↓　哪些地方静态分析到了尽头，需要换方法？</span></div>
 
   <section id="sec-gap">
-    <h2><span class="n">09</span>待补充分析</h2>
+    <h2><span class="n">10</span>待补充分析</h2>
     <p class="sub">按"对理解架构的价值 × 当前证据缺口"排序。前三项建议优先。</p>
     <div class="card">
       <table>
@@ -648,7 +759,7 @@
   <div class="bridge"><b>缺口列清楚了。</b><span class="to">↓　最后交代本报告的方法、工具与证据边界。</span></div>
 
   <section id="sec-method">
-    <h2><span class="n">10</span>方法与证据边界</h2>
+    <h2><span class="n">11</span>方法与证据边界</h2>
     <p class="sub">所有结论都应放回"静态字符串与符号"这个边界里理解。</p>
     <div class="g2">
       <div class="card">
