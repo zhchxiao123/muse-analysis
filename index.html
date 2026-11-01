@@ -49,7 +49,7 @@
       <div class="kind">第三篇 · 架构图</div>
       <h2>数据流架构图：共享入口、vm_id 分发、鉴权链与 Agent 交互</h2>
       <p>三张图把前两篇压成一页：端到端数据流全景（13 条链路对应协议与鉴权）、八道门的信任链、以 daemon 为中心的 Agent 交互能力图。</p>
-      <ul><li>客户端始终拨共享入口 hatch.metaaivm.com，按 vm_id 转发</li><li>Noise 在 VM 内终止，边缘看不到明文</li><li>四个能力出口 + 一个出网入口（sentinel）</li></ul>
+      <ul><li>客户端始终拨共享入口 hatch.metaaivm.com，按 vm_id 转发</li><li>Noise 在 VM 内终止，边缘看不到明文</li><li>四个能力出口 + 一个出网入口（sentinel）</li><li>一条消息穿过的 12 层封装，以及单入口为什么撑得住</li></ul>
     </a>
   </div>
   <div class="meta"><b>阅读提示：</b>三篇报告都有左侧目录与右侧标注画笔（可在图上圈画，Esc 退出，Ctrl/Cmd+Z 撤销）。报告内对"观察到 / 推断 / 未知"做了分级；出现次数只表示技术嵌入深度，不是流量指标。</div>
