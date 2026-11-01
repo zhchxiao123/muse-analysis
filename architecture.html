@@ -219,7 +219,7 @@
       <div class="t-kicker">一句话</div>
       <div class="t-main">Muse 是 Meta 的 AI agent 桌面客户端：<em>agent 本体跑在服务端为每个用户租的一台 VM 里</em>，Mac 应用是一个"节点"，把本机能力当工具挂给 VM 里的 agent。</div>
       <p><strong>基础设施</strong>：每用户一台 "Hatchery VM"（可升级为 AMD SEV-SNP 机密 VM），前面是 Meta 的鉴权、网关负载均衡、CDN、实时媒体与遥测服务。</p>
-      <p><strong>数据流</strong>：聊天由内嵌 web 客户端通过 <code>wss://&lt;vm&gt;…/v1/noise</code> 直连 VM 网关，链路上先做 <code>Noise_XX_25519_AESGCM_SHA256</code> 握手，再跑 <code>chat.send</code> / <code>chat.stream_events</code> 这类点分 RPC；回复以流式事件原路返回。需要动 Mac 时，VM 通过另一条 Noise 会话向原生"节点"下发 <code>node.invoke</code>，节点执行后回 <code>node.invoke.result</code>。</p>
+      <p><strong>数据流</strong>：聊天由内嵌 web 客户端通过 <code>wss://hatch.metaaivm.com/v1/noise?vm_id=…</code> 接入 VM 网关，链路上先做 <code>Noise_XX_25519_AESGCM_SHA256</code> 握手，再跑 <code>chat.send</code> / <code>chat.stream_events</code> 这类点分 RPC；回复以流式事件原路返回。需要动 Mac 时，VM 通过另一条 Noise 会话向原生"节点"下发 <code>node.invoke</code>，节点执行后回 <code>node.invoke.result</code>。</p>
       <p><strong>组网</strong>：Noise over Tigon（Meta HTTP/WebSocket 栈）承载控制面；Meta 的 rsys WebRTC（STUN/TURN）承载语音通话并在数据通道上跑一套 OpenAI Realtime 形状的 Thrift 协议。没有设备间 P2P，一切经 Meta 服务器。</p>
       <p><strong>能力</strong>：60 多个本机工具（后台虚拟显示器上的电脑控制、文件、Shell、邮件、iMessage、WhatsApp、日历、通讯录、备忘录、提醒），VM 侧还有浏览器、agent 邮箱、凭据库、Spaces、用户间 peering、出网审批。每个写操作都有审批卡。</p>
     </div>
@@ -274,7 +274,7 @@
         <text x="653" y="164" class="tiny" text-anchor="middle" style="fill:#3D3D3A">VM 内浏览器 · 文件区 uploads/</text>
         <text x="653" y="180" class="tiny" text-anchor="middle" style="fill:#3D3D3A">agent 邮箱 · 凭据库 · Spaces</text>
         <text x="653" y="196" class="tiny" text-anchor="middle" style="fill:#3D3D3A">出网审批（egress）</text>
-        <text x="653" y="222" class="mono" text-anchor="middle" style="fill:#87867F">wss://&lt;vmid&gt;…/v1/noise</text>
+        <text x="653" y="222" class="mono" text-anchor="middle" style="fill:#87867F">经 hatch.metaaivm.com 按 vm_id 接入</text>
         <text x="653" y="238" class="mono" text-anchor="middle" style="fill:#87867F">ssh-access/tokens</text>
         <!-- arrows -->
         <path class="ln" d="M166,130 L206,36" marker-end="url(#ar1)"/>
@@ -297,7 +297,7 @@
         <tr><td>VM 生命周期</td><td><code>/hatch/acs/lease_vm</code> <code>/hatch/fetch_leased_vm</code> <code>/hatch/enable_vm</code> <code>/hatch/vm/wake</code> <code>/hatch/reset-vm</code> <code>/hatch/destroy_and_release_vm</code></td><td>租用、唤醒、重置、销毁。"acs" 这一组带 <code>bind-cvm</code> 和 <code>issue-token</code>，对应机密 VM 的绑定与令牌签发。</td></tr>
         <tr><td>机密 VM</td><td><code>/hatch/cvm-chip-allowlist</code> <code>/hatch/cvm-chip-selection</code> <code>/hatch/cvm-migration</code> <code>/hatch/cvm-replace-state</code></td><td>芯片白名单、迁移、替换状态。客户端用 Rust 写的 <code>hatch_attestation_verifier</code> 校验 SEV-SNP 报告。</td></tr>
         <tr><td>鉴权</td><td><code>auth.meta.com/oidc</code> <code>/hatch/auth/passkey_register/*</code> <code>/hatch/auth/two_factor</code> <code>/hatch/auth/dbl_login</code> <code>/hatch/auth/sso_exchange</code></td><td>OIDC、passkey、2FA、OTP、SSO、设备登录（dbl）、保存账号。设备 ID 持久在 Keychain。</td></tr>
-        <tr><td>网关入口</td><td><code>wss://hatch.metaaivm.com/v1/noise</code>；每用户 VM 为 <code>wss://&lt;vmid&gt;&lt;后缀&gt;/</code></td><td>共享负载均衡入口和直连 VM 主机名两种形式，web 代码里称 "Feather VM"。</td></tr>
+        <tr><td>网关入口</td><td><code>wss://hatch.metaaivm.com/v1/noise?vm_id=…</code>；控制面下发的 gatewayUrl 形如 <code>wss://&lt;vm_id&gt;.metaaivm.com/</code></td><td>后者只是携带 vm_id 的<b>逻辑地址</b>：客户端从中解析出 vm_id，实际始终拨号共享入口，由入口按 vm_id 分发。生产域名下的 <code>&lt;vm_id&gt;.metaaivm.com</code> 在公网 DNS 无记录。</td></tr>
         <tr><td>实时媒体</td><td><code>meta-ai-realtime.facebook.com</code> <code>stun:edge-stun.facebook.com:3478</code> <code>wss://shortwave.meta.ai/voyager/v1/asr/duplex</code> <code>/hatch/voice/tts/stream</code></td><td>语音通话、STUN、流式语音识别、流式 TTS。</td></tr>
         <tr><td>内容与更新</td><td><code>scontent.xx.fbcdn.net</code> <code>rupload.meta.ai</code> <code>facebook.com/endo/release/appcast.xml</code></td><td>媒体 CDN、上传、Sparkle 自动更新（EdDSA 签名）。</td></tr>
         <tr><td>遥测</td><td>QPL、analytics、Crashpad（<code>EndoCrashpadHandler</code>）、Sentry</td><td>本地 SQLite 表 <code>analytics_events</code> 带 app/device/user identity 与 privacy_context 列。</td></tr>
@@ -315,7 +315,7 @@
     <div class="card">
       <table>
         <tr><th style="width:18%">维度</th><th>观察到的事实</th></tr>
-        <tr><td>地址</td><td>每用户 VM 主机名 <code>&lt;vm_id&gt;.metaaivm.com</code>，vm_id 是 UUID（带连字符或 32 位十六进制），测试环境后缀 <code>.test-only.metaaivm.com</code>；共享入口 <code>hatch.metaaivm.com</code>；统一路径 <code>/v1/noise</code>。web 代码把 VM 称作 "Feather VM"。</td></tr>
+        <tr><td>地址</td><td>控制面给出的 gatewayUrl 形如 <code>wss://&lt;vm_id&gt;.metaaivm.com/</code>（vm_id 是 UUID，带连字符或 32 位十六进制；web 代码称 "Feather VM"），但客户端只从中<strong>解析出 vm_id</strong>：真正的 TCP/TLS 目的地始终是共享入口 <code>hatch.metaaivm.com</code>，路径 <code>/v1/noise</code>，vm_id 作为查询参数。公网 DNS 核对：<code>hatch.metaaivm.com</code> 有记录（Meta 边缘，匿名访问返回 401），生产的 <code>&lt;uuid&gt;.metaaivm.com</code> 无记录；只有 <code>*.test-only.metaaivm.com</code> 有通配解析，对应代码里 embed / 测试环境下"gatewayUrl 不含 vm_id 时直连该主机"的分支。原生侧同样经 <code>NoiseGatewayCarrier::sharedIngressDialUrl</code> 拨号共享入口。</td></tr>
         <tr><td>查询参数</td><td><code>vm_id</code> · <code>auth_token</code> · <code>notary_token</code>（可选）· <code>app_id=endo-macos</code> · <code>app_version</code>（从 UA 标记 <code>HatchMac/x</code> 取）· <code>request_id</code> · 可选 <code>atod_token</code>（<code>use_od=1</code> 时，接内部 on-demand 环境）。浏览器 embed 环境可不带 vm_id，由网关按身份解析。</td></tr>
         <tr><td>凭据来源</td><td><code>POST /api/hatch/token {vmAddress, vmName, force_refresh}</code> → <code>{token, notary_token}</code>；<code>POST /api/hatch/noise-notary-token {vmName}</code> → <code>{notaryToken}</code>。这些 <code>/api/hatch/*</code> 对 web 层是同源路径，由原生壳（<code>hatchAPIBaseURL</code>、<code>SandboxSchemeHandler</code>）代理到 Meta 控制面，带用户登录态。</td></tr>
         <tr><td>Notary 委托</td><td>若 notary_token 形如 <code>delegation.&lt;ver&gt;.&lt;a&gt;.&lt;b&gt;</code>，客户端用按 VM 保存的 <strong>Ed25519 签名密钥</strong>（WebCrypto，不可导出）对 <code>{"uri":"/v1/noise"}</code> 签名，生成 <code>endorsement.&lt;ver&gt;.&lt;a&gt;.&lt;b&gt;.&lt;sig&gt;</code>。HTTP 请求用头 <code>x-hatch-notary-authorization</code> 携带；SSH 访问令牌在 <code>/api/hatch/ssh-access/tokens</code> 以同名头铸造。</td></tr>
@@ -502,7 +502,7 @@
         <rect class="box-ok" x="576" y="14" width="170" height="206" rx="8"/>
         <text x="661" y="38" text-anchor="middle" style="fill:#141413;font-weight:600">VM 网关 + agent</text>
         <text x="661" y="56" class="tiny" text-anchor="middle" style="fill:#3D3D3A">hatch.metaaivm.com</text>
-        <text x="661" y="70" class="tiny" text-anchor="middle" style="fill:#3D3D3A">或 &lt;vmid&gt; 直连主机名</text>
+        <text x="661" y="70" class="tiny" text-anchor="middle" style="fill:#3D3D3A">vm_id 作查询参数</text>
         <!-- chat channel -->
         <path class="ln-ok" d="M186,30 L572,30" marker-end="url(#ar3o)"/>
         <text x="379" y="24" class="tiny" text-anchor="middle" style="fill:#788C5D;font-weight:600">① WebSocket /v1/noise → Noise_XX 握手（notary token 绑定 vmName）</text>
@@ -532,7 +532,7 @@
       <li>
         <div class="tr-head"><span class="tr-stage">建链</span><b>web 层取 notary token，开 WebSocket，完成 Noise_XX 握手</b><span class="tr-flag auto">全自动</span></div>
         <div class="tr-body">
-          <p>web 代码先 <code>POST /api/hatch/noise-notary-token {vmName}</code> 拿令牌，再拼 URL：有 VM 主机名就连 <code>wss://&lt;vmid&gt;&lt;FEATHER_VM_HOST_SUFFIX&gt;/</code>，否则连共享入口 <code>wss://hatch.metaaivm.com/v1/noise</code>。随后用 JS 实现的 <code>NoiseXXInitiator</code>（协议名 <code>Noise_XX_25519_AESGCM_SHA256</code>）握手，WebSocket 设为 arraybuffer。</p>
+          <p>web 代码先 <code>POST /api/hatch/noise-notary-token {vmName}</code> 拿令牌，再拼 URL：从控制面下发的 gatewayUrl（形如 <code>wss://&lt;vm_id&gt;.metaaivm.com/</code>）解析出 vm_id，然后连共享入口 <code>wss://hatch.metaaivm.com/v1/noise?vm_id=…</code>；只有 embed / 测试环境下 gatewayUrl 不含 vm_id 时才直连该主机。随后用 JS 实现的 <code>NoiseXXInitiator</code>（协议名 <code>Noise_XX_25519_AESGCM_SHA256</code>）握手，WebSocket 设为 arraybuffer。</p>
           <p class="tr-block"><b>推断：</b>notary token 的作用是让网关把这条匿名 WebSocket 绑到用户的 VM 身份上；机密 VM 场景下还会叠加 SEV-SNP 证明策略（<code>HCHNoiseAttestationPolicy</code>、<code>attestation_enforce_mode</code>）。</p>
         </div>
       </li>
