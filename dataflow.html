@@ -108,7 +108,8 @@
       <a href="#sec-auth" data-sec="sec-auth"><span class="num">02</span><span>鉴权与信任链</span></a>
       <a href="#sec-agent" data-sec="sec-agent"><span class="num">03</span><span>Agent 交互能力</span></a>
       <a href="#sec-layers" data-sec="sec-layers"><span class="num">04</span><span>一条消息穿过的 12 层</span></a>
-      <a href="#sec-notes" data-sec="sec-notes"><span class="num">05</span><span>图例与边界</span></a>
+      <a href="#sec-lifecycle" data-sec="sec-lifecycle"><span class="num">05</span><span>长连接的生命周期</span></a>
+      <a href="#sec-notes" data-sec="sec-notes"><span class="num">06</span><span>图例与边界</span></a>
     </nav>
     <div class="navhint">点击目录跳转 · 右侧可圈画标注</div>
   </aside>
@@ -579,8 +580,98 @@
     </div>
   </section>
 
+  <div class="bridge"><b>十二层说清了"怎么走"。</b><span class="to">↓　这条连接是一直在的吗？什么时候断，怎么回来？</span></div>
+
+  <section id="sec-lifecycle">
+    <h2><span class="n">05</span>长连接的生命周期</h2>
+    <p class="sub">设计上是"尽量一直保持"：10 秒心跳、秒级重连、后台不放手。两个例外决定了它不是永远在线：<strong>VM 会被挂起</strong>，以及<strong>没人看的时候不主动唤醒</strong>。</p>
+    <figure>
+      <div class="fig-h">图 5 · 连接状态机<span>web 聊天层为主，节点通道同理</span></div>
+      <svg class="rf" viewBox="0 0 1040 420" role="img" aria-label="连接状态机">
+        <defs>
+          <marker id="m5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker>
+          <marker id="m5o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#788C5D"/></marker>
+          <marker id="m5r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B04A3F"/></marker>
+        </defs>
+        <!-- states -->
+        <rect class="box-d" x="20" y="40" width="190" height="90" rx="12"/>
+        <text x="115" y="64" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">建链</text>
+        <text x="115" y="84" class="tiny" text-anchor="middle" style="fill:#3D3D3A">取 token（10 s）· 取 notary（8 s）</text>
+        <text x="115" y="100" class="tiny" text-anchor="middle" style="fill:#3D3D3A">WSS 打开 · Noise 握手（10 s）</text>
+        <text x="115" y="116" class="tiny" text-anchor="middle" style="fill:#3D3D3A">client.register_capabilities</text>
+        <rect class="box-ok" x="300" y="40" width="220" height="90" rx="12"/>
+        <text x="410" y="64" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">已连接（常态）</text>
+        <text x="410" y="84" class="tiny" text-anchor="middle" style="fill:#3D3D3A">心跳每 10 s，探测超时 10 s</text>
+        <text x="410" y="100" class="tiny" text-anchor="middle" style="fill:#3D3D3A">stream 空闲超时 5 min（不影响连接）</text>
+        <text x="410" y="116" class="tiny" text-anchor="middle" style="fill:#3D3D3A">后台：App Nap 豁免 · 节点通道保温</text>
+        <rect class="box-x" x="610" y="40" width="200" height="90" rx="12"/>
+        <text x="710" y="64" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">断开</text>
+        <text x="710" y="84" class="tiny" text-anchor="middle" style="fill:#3D3D3A">4002 心跳超时 · 4001 客户端重连</text>
+        <text x="710" y="100" class="tiny" text-anchor="middle" style="fill:#3D3D3A">1012 / 1013 服务端通知</text>
+        <text x="710" y="116" class="tiny" text-anchor="middle" style="fill:#3D3D3A">网络离线 · VM 正在挂起</text>
+        <rect class="box" x="300" y="190" width="220" height="90" rx="12"/>
+        <text x="410" y="214" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">重连退避</text>
+        <text x="410" y="234" class="tiny" text-anchor="middle" style="fill:#3D3D3A">0.5 → 1 → 2 → 5 → 10 s，单次上限 15 s</text>
+        <text x="410" y="250" class="tiny" text-anchor="middle" style="fill:#3D3D3A">30 s 标记慢重连 · 耗尽后 60 s 再武装</text>
+        <text x="410" y="266" class="tiny" text-anchor="middle" style="fill:#3D3D3A">页面 resume / 网络恢复 立即重试</text>
+        <rect class="box" x="610" y="190" width="200" height="90" rx="12"/>
+        <text x="710" y="214" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">VM 挂起</text>
+        <text x="710" y="234" class="tiny" text-anchor="middle" style="fill:#3D3D3A">"Pinned VM is suspending"</text>
+        <text x="710" y="250" class="tiny" text-anchor="middle" style="fill:#3D3D3A">空闲阈值静态不可见（推断：按空闲）</text>
+        <text x="710" y="266" class="tiny" text-anchor="middle" style="fill:#3D3D3A">连接结束，等待唤醒</text>
+        <rect class="box" x="20" y="190" width="190" height="90" rx="12"/>
+        <text x="115" y="214" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">唤醒与预热</text>
+        <text x="115" y="234" class="tiny" text-anchor="middle" style="fill:#3D3D3A">POST /api/hatch/vm/wake（10 s）</text>
+        <text x="115" y="250" class="tiny" text-anchor="middle" style="fill:#3D3D3A">"Warming up"，上限 5 min</text>
+        <text x="115" y="266" class="tiny" text-anchor="middle" style="fill:#3D3D3A">仅当界面被看着才发起</text>
+        <!-- transitions -->
+        <path class="ln-ok" d="M212,85 L296,85" marker-end="url(#m5o)"/><text x="254" y="78" class="tiny" text-anchor="middle" style="fill:#788C5D">握手成功</text>
+        <path class="ln-r ln-d" d="M522,85 L606,85" marker-end="url(#m5r)"/><text x="564" y="78" class="tiny" text-anchor="middle" style="fill:#B04A3F">任一原因</text>
+        <path class="ln" d="M660,132 L470,186" marker-end="url(#m5)"/><text x="590" y="150" class="tiny" text-anchor="middle" style="fill:#3D3D3A">可重试</text>
+        <path class="ln" d="M760,132 L740,186" marker-end="url(#m5)"/><text x="790" y="164" class="tiny" text-anchor="middle" style="fill:#3D3D3A">VM 不可达</text>
+        <path class="ln" d="M340,188 L180,132" marker-end="url(#m5)"/><text x="248" y="150" class="tiny" text-anchor="middle" style="fill:#3D3D3A">到点重试</text>
+        <path class="ln" d="M710,282 L710,300 L115,300 L115,284" marker-end="url(#m5)"/><text x="411" y="312" class="tiny" text-anchor="middle" style="fill:#3D3D3A">界面可见且用户在场 → 唤醒</text>
+        <path class="ln" d="M115,188 L115,134" marker-end="url(#m5)"/><text x="150" y="164" class="tiny" text-anchor="start" style="fill:#3D3D3A">VM 就绪后建链</text>
+        <!-- hold note -->
+        <rect x="20" y="320" width="790" height="34" rx="8" fill="rgba(217,119,87,0.08)" stroke="#D97757" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <text x="415" y="341" class="lab" text-anchor="middle" style="fill:#B04A3F">holdUnwatchedVmWakes：窗口不可见或用户不在场时，不为它唤醒 VM；连接保持断开，直到有人回来看</text>
+        <!-- right-side native column -->
+        <rect class="box-d" x="840" y="40" width="180" height="240" rx="12"/>
+        <text x="930" y="64" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">节点通道（原生）</text>
+        <text x="930" y="88" class="tiny" text-anchor="middle" style="fill:#3D3D3A">"keep the node command</text>
+        <text x="930" y="102" class="tiny" text-anchor="middle" style="fill:#3D3D3A">channel warm in the background"</text>
+        <text x="930" y="124" class="tiny" text-anchor="middle" style="fill:#3D3D3A">App Nap 豁免</text>
+        <text x="930" y="140" class="tiny" text-anchor="middle" style="fill:#3D3D3A">BackgroundActivityLease 断言</text>
+        <text x="930" y="162" class="tiny" text-anchor="middle" style="fill:#3D3D3A">/nodes/heartbeat 定期上报</text>
+        <text x="930" y="178" class="tiny" text-anchor="middle" style="fill:#3D3D3A">keepalive 确认超时 → 重连</text>
+        <text x="930" y="200" class="tiny" text-anchor="middle" style="fill:#3D3D3A">"reconnect resumes when</text>
+        <text x="930" y="214" class="tiny" text-anchor="middle" style="fill:#3D3D3A">admission clears"</text>
+        <text x="930" y="240" class="tiny" text-anchor="middle" style="fill:#87867F">为 cron 任务和后台工作</text>
+        <text x="930" y="256" class="tiny" text-anchor="middle" style="fill:#87867F">随时能触达 Mac 而存在</text>
+        <line x1="20" y1="376" x2="1020" y2="376" stroke="#F0EEE6" stroke-width="1.5"/>
+        <text x="20" y="398" class="lab" style="fill:#3D3D3A">结论：只要 VM 在跑，两条 Noise 长连接就在，断了几秒内回来，app 退后台也不放手；真正的变量是 VM 的运行状态，而"后台持续工作"的隐含前提是有定时任务等触发源让 VM 保持醒着。</text>
+      </svg>
+      <figcaption><b>"一直连着"对 Mac 侧成立，对 VM 侧有条件</b>：客户端的所有机制都在维持连接，但 VM 可以被挂起，且客户端只在有人看界面时才去唤醒它。</figcaption>
+    </figure>
+    <div class="card">
+      <table>
+        <tr><th style="width:26%">参数 / 行为</th><th style="width:18%">值</th><th>来源与含义</th></tr>
+        <tr><td>心跳间隔</td><td>10 s</td><td><code>KEEPALIVE_INTERVAL_MS</code>；连上即启动心跳循环（web 聊天层）。</td></tr>
+        <tr><td>心跳超时</td><td>10 s → 关闭码 4002</td><td><code>HEARTBEAT_TIMEOUT_MS</code>、<code>HEARTBEAT_TIMEOUT_CLOSE_CODE</code>；探测无应答主动关闭再重连。</td></tr>
+        <tr><td>重连退避</td><td>0.5 / 1 / 2 / 5 / 10 s，上限 15 s</td><td><code>RECONNECT_DELAYS_MS</code>、<code>RECONNECT_WAIT_MAX_MS</code>；30 s 标记慢重连；耗尽后 60 s 再武装。</td></tr>
+        <tr><td>服务端通知</td><td>关闭码 1012 / 1013</td><td>"service notice"，视为 VM 重启或稍后再试，触发重连而非报错。</td></tr>
+        <tr><td>stream 空闲</td><td>5 min</td><td><code>STREAM_IDLE_TIMEOUT_MS</code>；作用于连接内单条 stream，不断连接。</td></tr>
+        <tr><td>后台保持（原生）</td><td>App Nap 豁免 + 后台活动断言</td><td>"Began App Nap exemption for gateway keepalive"、<code>BackgroundActivityLease</code>；节点通道在 app 退后台后仍保温。</td></tr>
+        <tr><td>VM 挂起</td><td>可重试的断开</td><td>"Pinned VM is suspending; the connection is retryable"、"not reachable (suspended, deleted, or unmapped); retry with a force-wakeup credential fetch"。</td></tr>
+        <tr><td>VM 唤醒</td><td><code>POST /api/hatch/vm/wake</code>，10 s</td><td>参数 vm_id / retry_count / connect_attempt_id；触发类型 foreground / recovery / late；界面 "Warming up"，预热等待上限 5 min。</td></tr>
+        <tr><td>无人看不唤醒</td><td><code>holdUnwatchedVmWakes</code></td><td>窗口不可见或用户不在场时不发起唤醒；可见性由 <code>isHatchSurfaceWatched</code> 判定（可见 + 焦点 / 在场）。</td></tr>
+      </table>
+      <div class="delta"><b>小结：</b>连接层面是典型的"永远在线"客户端设计；产品层面把"VM 是否醒着"当成成本开关，用"有人看"和"有任务"两个条件来决定要不要维持。</div>
+    </div>
+  </section>
+
   <section id="sec-notes">
-    <h2><span class="n">05</span>图例与边界</h2>
+    <h2><span class="n">06</span>图例与边界</h2>
     <p class="sub">三张图都基于前两篇报告的静态证据，这里统一说明记号与未验证项。</p>
     <div class="legend" style="margin-top:0">
       <span><i class="chip d"></i>客户端 / 外部输入</span>

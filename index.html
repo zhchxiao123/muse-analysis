@@ -29,7 +29,7 @@
 <div class="wrap">
   <div class="eyebrow">Static reverse engineering · REA + Ghidra · 2026-10-31 / 11-01</div>
   <h1>Muse 10.0（Meta Endo/Hatch）<br>Agent 应用逆向分析报告</h1>
-  <p class="lead">对 macOS 安装包 <code>Muse-10.0.dmg</code>（bundle id <code>com.meta.endo</code>）的静态分析。三篇报告：第一篇回答基础设施、数据流、组网与本机↔远程互联；第二篇深入 agent 的会话、运行时、文件、资料库与记忆设计；第三篇是数据流架构图。全部结论来自二进制字符串、符号、内嵌 web 客户端与包内资源，没有运行时观测。</p>
+  <p class="lead">对 macOS 安装包 <code>Muse-10.0.dmg</code>（bundle id <code>com.meta.endo</code>）的静态分析。四篇：第一篇回答基础设施、数据流、组网与本机↔远程互联；第二篇深入 agent 的会话、运行时、文件、资料库与记忆设计；第三篇是数据流架构图；第四篇是一篇通用技术补课，解释海量长连接如何连到同一个地址。全部结论来自二进制字符串、符号、内嵌 web 客户端与包内资源，没有运行时观测。</p>
   <div class="cards">
     <a class="card" href="architecture.html">
       <div class="kind">第一篇 · 架构</div>
@@ -49,10 +49,18 @@
       <div class="kind">第三篇 · 架构图</div>
       <h2>数据流架构图：共享入口、vm_id 分发、鉴权链与 Agent 交互</h2>
       <p>三张图把前两篇压成一页：端到端数据流全景（13 条链路对应协议与鉴权）、八道门的信任链、以 daemon 为中心的 Agent 交互能力图。</p>
-      <ul><li>客户端始终拨共享入口 hatch.metaaivm.com，按 vm_id 转发</li><li>Noise 在 VM 内终止，边缘看不到明文</li><li>四个能力出口 + 一个出网入口（sentinel）</li><li>一条消息穿过的 12 层封装，以及单入口为什么撑得住</li></ul>
+      <ul><li>客户端始终拨共享入口 hatch.metaaivm.com，按 vm_id 转发</li><li>Noise 在 VM 内终止，边缘看不到明文</li><li>四个能力出口 + 一个出网入口（sentinel）</li><li>一条消息穿过的 12 层封装 · 长连接的生命周期（心跳、重连、VM 挂起与唤醒）</li></ul>
     </a>
   </div>
-  <div class="meta"><b>阅读提示：</b>三篇报告都有左侧目录与右侧标注画笔（可在图上圈画，Esc 退出，Ctrl/Cmd+Z 撤销）。报告内对"观察到 / 推断 / 未知"做了分级；出现次数只表示技术嵌入深度，不是流量指标。</div>
+  <div class="cards" style="margin-top:16px">
+    <a class="card" href="scale.html">
+      <div class="kind">第四篇 · 知识补课</div>
+      <h2>几亿人连同一个地址：海量长连接是怎么扛住的</h2>
+      <p>不针对 Muse 代码，而是解释背后的通用技术：DNS 到 L4 到 L7 的分流漏斗、单机能扛多少长连接、每条连接的内存账、心跳的真实成本，以及四个常见误解。最后对照回 Muse 的入口。</p>
+      <ul><li>一个域名不是一台机器，长连接的成本是内存不是 CPU</li><li>C10K 到 C10M：事件驱动 I/O 如何让单机扛百万连接</li><li>65535 端口限制为什么不成立</li></ul>
+    </a>
+  </div>
+  <div class="meta"><b>阅读提示：</b>四篇都有左侧目录与右侧标注画笔（可在图上圈画，Esc 退出，Ctrl/Cmd+Z 撤销）。报告内对"观察到 / 推断 / 未知"做了分级；出现次数只表示技术嵌入深度，不是流量指标。</div>
 </div>
 </body>
 </html>
