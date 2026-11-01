@@ -44,6 +44,10 @@
   @media(max-width:860px){.g2,.g3{grid-template-columns:1fr}}
   figure{border:1.5px solid var(--gray-300);border-radius:14px;background:#fff;padding:20px 22px 16px;margin-bottom:16px}
   figure>svg{display:block;width:100%;height:auto}
+  .scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+  .scroll svg.wide{display:block;width:1400px;min-width:1400px;height:auto}
+  @media(min-width:1700px){.scroll svg.wide{width:100%;min-width:0}}
+
   figcaption{margin-top:14px;padding-top:12px;border-top:1px solid var(--gray-150);font-size:12.5px;line-height:1.7;color:var(--gray-700)}figcaption b{color:var(--slate)}
   .fig-h{font-size:12.5px;font-weight:600;margin-bottom:14px;display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
   .fig-h span{font-family:var(--mono);font-size:11px;color:var(--clay);font-weight:400}
@@ -119,143 +123,173 @@
     <h2><span class="n">01</span>端到端数据流全景</h2>
     <p class="sub">四列：客户端 · Meta 控制面与边缘 · 用户 VM · 外部。编号对应下表的协议与鉴权。</p>
     <figure>
-      <div class="fig-h">图 1 · 端到端数据流<span>实线观察到 · 赤色虚线 = VM 反向调用本机 · 蓝点线 = 推断</span></div>
-      <svg class="rf" viewBox="0 0 760 640" role="img" aria-label="端到端数据流">
+      <div class="fig-h">图 1 · 端到端数据流<span>可左右拖动 · 实线观察到 · 赤色虚线 = VM 反向调用本机 · 蓝点线 = 推断</span></div>
+            <div class="scroll"><svg class="rf wide" viewBox="0 0 1400 840" role="img" aria-label="端到端数据流">
         <defs>
           <marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker>
           <marker id="m1o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#788C5D"/></marker>
           <marker id="m1r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B04A3F"/></marker>
           <marker id="m1b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3A4EC9"/></marker>
         </defs>
-        <!-- column headers -->
-        <text x="104" y="22" text-anchor="middle" style="fill:#87867F;font-weight:600;font-size:10.5px">客户端</text>
-        <text x="304" y="22" text-anchor="middle" style="fill:#87867F;font-weight:600;font-size:10.5px">Meta 控制面与边缘</text>
-        <text x="514" y="22" text-anchor="middle" style="fill:#87867F;font-weight:600;font-size:10.5px">用户 VM（每人一台）</text>
-        <text x="690" y="22" text-anchor="middle" style="fill:#87867F;font-weight:600;font-size:10.5px">外部</text>
-        <line x1="204" y1="30" x2="204" y2="628" stroke="#F0EEE6"/><line x1="404" y1="30" x2="404" y2="628" stroke="#F0EEE6"/><line x1="624" y1="30" x2="624" y2="628" stroke="#F0EEE6"/>
-        <!-- A: client -->
-        <rect class="box-d" x="14" y="36" width="180" height="150" rx="10"/>
-        <text x="104" y="56" text-anchor="middle" style="fill:#141413;font-weight:600">Mac 应用</text>
-        <text x="104" y="74" class="tiny" text-anchor="middle" style="fill:#3D3D3A">原生壳：登录态、/api/hatch 代理</text>
-        <text x="104" y="90" class="tiny" text-anchor="middle" style="fill:#3D3D3A">web 聊天层：Noise 会话 ①</text>
-        <text x="104" y="106" class="tiny" text-anchor="middle" style="fill:#3D3D3A">Endo 节点：Noise 会话 ②</text>
-        <text x="104" y="122" class="tiny" text-anchor="middle" style="fill:#3D3D3A">HatchTools：邮件 · 信息 · 文件 · 电脑控制</text>
-        <text x="104" y="138" class="tiny" text-anchor="middle" style="fill:#3D3D3A">rsys：语音通话</text>
-        <text x="104" y="154" class="tiny" text-anchor="middle" style="fill:#3D3D3A">Chrome 扩展（Native Messaging）</text>
-        <text x="104" y="176" class="mono" text-anchor="middle" style="fill:#87867F">app_id=endo-macos</text>
-        <rect class="box-d" x="14" y="200" width="180" height="52" rx="10"/>
-        <text x="104" y="220" text-anchor="middle" style="fill:#141413;font-weight:600">浏览器 embed / 手机 app</text>
-        <text x="104" y="238" class="tiny" text-anchor="middle" style="fill:#3D3D3A">同一 web 客户端，vm_id 可省略</text>
-        <rect class="box-d" x="14" y="266" width="180" height="52" rx="10"/>
-        <text x="104" y="286" text-anchor="middle" style="fill:#141413;font-weight:600">IM 渠道</text>
-        <text x="104" y="304" class="tiny" text-anchor="middle" style="fill:#3D3D3A">WhatsApp / Messenger / Telegram</text>
-        <!-- B: control plane & edge -->
-        <rect class="box" x="214" y="36" width="180" height="58" rx="10"/>
-        <text x="304" y="56" text-anchor="middle" style="fill:#141413;font-weight:600">账号与登录</text>
-        <text x="304" y="72" class="tiny" text-anchor="middle" style="fill:#3D3D3A">auth.meta.com · OIDC · passkey</text>
-        <text x="304" y="86" class="tiny" text-anchor="middle" style="fill:#3D3D3A">accountscenter.meta.com</text>
-        <rect class="box" x="214" y="106" width="180" height="88" rx="10"/>
-        <text x="304" y="126" text-anchor="middle" style="fill:#141413;font-weight:600">控制面 API（/hatch/*）</text>
-        <text x="304" y="142" class="tiny" text-anchor="middle" style="fill:#3D3D3A">hatch-api.meta.ai · api.meta.ai</text>
-        <text x="304" y="156" class="tiny" text-anchor="middle" style="fill:#3D3D3A">token · noise-notary-token</text>
-        <text x="304" y="170" class="tiny" text-anchor="middle" style="fill:#3D3D3A">lease_vm · bind-cvm · ssh tokens</text>
-        <text x="304" y="184" class="tiny" text-anchor="middle" style="fill:#3D3D3A">invites · subscription</text>
-        <rect class="box-x" x="214" y="206" width="180" height="108" rx="10"/>
-        <text x="304" y="226" text-anchor="middle" style="fill:#141413;font-weight:600">共享入口</text>
-        <text x="304" y="242" class="mono" text-anchor="middle" style="fill:#3D3D3A">hatch.metaaivm.com/v1/noise</text>
-        <text x="304" y="258" class="tiny" text-anchor="middle" style="fill:#3D3D3A">Meta 边缘：TLS 终止，匿名 401</text>
-        <text x="304" y="272" class="tiny" text-anchor="middle" style="fill:#3D3D3A">ingress_rev_proxy 校验 token</text>
-        <text x="304" y="286" class="tiny" text-anchor="middle" style="fill:#3D3D3A">按 vm_id 转发 Noise 帧</text>
-        <text x="304" y="302" class="tiny" text-anchor="middle" style="fill:#B04A3F;font-weight:600">看不到 Noise 明文</text>
-        <rect class="box" x="214" y="326" width="180" height="58" rx="10"/>
-        <text x="304" y="346" text-anchor="middle" style="fill:#141413;font-weight:600">实时媒体</text>
-        <text x="304" y="362" class="tiny" text-anchor="middle" style="fill:#3D3D3A">meta-ai-realtime · edge-stun</text>
-        <text x="304" y="376" class="tiny" text-anchor="middle" style="fill:#3D3D3A">shortwave ASR · TTS 流</text>
-        <rect x="214" y="396" width="180" height="52" rx="10" fill="none" stroke="#3A4EC9" stroke-width="1.5" stroke-dasharray="3 3"/>
-        <text x="304" y="416" text-anchor="middle" style="fill:#141413;font-weight:600">模型推理（位置推断）</text>
-        <text x="304" y="434" class="tiny" text-anchor="middle" style="fill:#3D3D3A">model.get/set 选型 · 名称已抹掉</text>
-        <rect class="box" x="214" y="460" width="180" height="52" rx="10"/>
-        <text x="304" y="480" text-anchor="middle" style="fill:#141413;font-weight:600">CDN · 上传 · 更新 · 遥测</text>
-        <text x="304" y="498" class="tiny" text-anchor="middle" style="fill:#3D3D3A">fbcdn · rupload · appcast · QPL</text>
-        <!-- C: VM -->
-        <rect class="box-ok" x="414" y="36" width="200" height="64" rx="10"/>
-        <text x="514" y="56" text-anchor="middle" style="fill:#141413;font-weight:600">VM 网关（Noise 终止）</text>
-        <text x="514" y="72" class="tiny" text-anchor="middle" style="fill:#3D3D3A">XX 握手 · 证明 · RV 密钥</text>
-        <text x="514" y="88" class="tiny" text-anchor="middle" style="fill:#3D3D3A">ServiceFrame 按 service 分发</text>
-        <rect class="box-ok" x="414" y="112" width="200" height="170" rx="10"/>
-        <text x="514" y="132" text-anchor="middle" style="fill:#141413;font-weight:600">daemon（agent 运行时）</text>
-        <text x="514" y="150" class="tiny" text-anchor="middle" style="fill:#3D3D3A">sessions · chat.stream_events</text>
-        <text x="514" y="164" class="tiny" text-anchor="middle" style="fill:#3D3D3A">工具路由 · 子代理 · compaction</text>
-        <text x="514" y="178" class="tiny" text-anchor="middle" style="fill:#3D3D3A">nodes.invoke → 本机 / web 节点</text>
-        <text x="514" y="192" class="tiny" text-anchor="middle" style="fill:#3D3D3A">cron · goals · feed · ideas</text>
-        <text x="514" y="206" class="tiny" text-anchor="middle" style="fill:#3D3D3A">fs · library · memory · spaces</text>
-        <text x="514" y="220" class="tiny" text-anchor="middle" style="fill:#3D3D3A">peers · shared agents · channels</text>
-        <text x="514" y="234" class="tiny" text-anchor="middle" style="fill:#3D3D3A">VM 浏览器（lease / takeover）</text>
-        <text x="514" y="248" class="tiny" text-anchor="middle" style="fill:#3D3D3A">tool.exec / imagine / web_fetch</text>
-        <text x="514" y="268" class="mono" text-anchor="middle" style="fill:#87867F">/home/hatch/workspace · /MEMORY.md</text>
-        <rect class="box-ok" x="414" y="294" width="200" height="56" rx="10"/>
-        <text x="514" y="314" text-anchor="middle" style="fill:#141413;font-weight:600">sentinel（出网管控）</text>
-        <text x="514" y="332" class="tiny" text-anchor="middle" style="fill:#3D3D3A">tproxy · mitm · SNI · 审批 · 作用域</text>
-        <rect class="box-ok" x="414" y="362" width="96" height="56" rx="10"/>
-        <text x="462" y="382" text-anchor="middle" style="fill:#141413;font-weight:600">vault</text>
-        <text x="462" y="400" class="tiny" text-anchor="middle" style="fill:#3D3D3A">LUKS · 凭据库</text>
-        <rect class="box-ok" x="518" y="362" width="96" height="56" rx="10"/>
-        <text x="566" y="382" text-anchor="middle" style="fill:#141413;font-weight:600">authd</text>
-        <text x="566" y="400" class="tiny" text-anchor="middle" style="fill:#3D3D3A">连接器 OAuth 回调</text>
-        <rect class="box-ok" x="414" y="430" width="200" height="40" rx="10"/>
-        <text x="514" y="455" text-anchor="middle" style="fill:#141413;font-weight:600">ssh_access <tspan class="tiny" style="fill:#3D3D3A;font-weight:400">· operator 入口 · 需 notary 头</tspan></text>
-        <!-- D: external -->
-        <rect class="box" x="634" y="36" width="112" height="64" rx="10"/>
-        <text x="690" y="56" text-anchor="middle" style="fill:#141413;font-weight:600">透明日志</text>
-        <text x="690" y="72" class="tiny" text-anchor="middle" style="fill:#3D3D3A">Cloudflare Plexi</text>
-        <text x="690" y="86" class="tiny" text-anchor="middle" style="fill:#3D3D3A">Sigstore · 吊销表</text>
-        <rect class="box" x="634" y="112" width="112" height="64" rx="10"/>
-        <text x="690" y="132" text-anchor="middle" style="fill:#141413;font-weight:600">其他用户的 VM</text>
-        <text x="690" y="148" class="tiny" text-anchor="middle" style="fill:#3D3D3A">peers · 共享 agent</text>
-        <text x="690" y="162" class="tiny" text-anchor="middle" style="fill:#3D3D3A">经同一共享入口</text>
-        <rect class="box" x="634" y="294" width="112" height="56" rx="10"/>
-        <text x="690" y="314" text-anchor="middle" style="fill:#141413;font-weight:600">互联网</text>
-        <text x="690" y="332" class="tiny" text-anchor="middle" style="fill:#3D3D3A">网页 · SaaS API</text>
-        <rect class="box" x="634" y="362" width="112" height="56" rx="10"/>
-        <text x="690" y="382" text-anchor="middle" style="fill:#141413;font-weight:600">OAuth 提供方</text>
-        <text x="690" y="400" class="tiny" text-anchor="middle" style="fill:#3D3D3A">Google · 1Password…</text>
-        <!-- flows -->
-        <!-- 1 login -->
-        <path class="ln" d="M196,62 L210,62" marker-end="url(#m1)"/><circle cx="203" cy="50" r="7" fill="#87867F"/><text x="203" y="53.5" class="num" text-anchor="middle">1</text>
-        <!-- 2 control plane -->
-        <path class="ln" d="M196,140 L210,140" marker-end="url(#m1)"/><circle cx="203" cy="128" r="7" fill="#87867F"/><text x="203" y="131.5" class="num" text-anchor="middle">2</text>
-        <!-- 3 WSS to ingress -->
-        <path class="ln-ok" d="M196,98 L214,240" marker-end="url(#m1o)"/><circle cx="205" cy="168" r="7" fill="#788C5D"/><text x="205" y="171.5" class="num" text-anchor="middle">3</text>
-        <!-- 4 ingress -> VM gateway (opaque frames) -->
-        <path class="ln-ok" d="M396,236 L410,70" marker-end="url(#m1o)"/><circle cx="403" cy="150" r="7" fill="#788C5D"/><text x="403" y="153.5" class="num" text-anchor="middle">4</text>
-        <!-- 5 gateway -> daemon -->
-        <path class="ln" d="M514,102 L514,108" marker-end="url(#m1)"/>
-        <!-- 6 node invoke back to Mac (dashed red) via same ingress -->
-        <path class="ln-d" d="M414,178 L396,250 L196,112" marker-end="url(#m1r)"/><circle cx="300" cy="196" r="7" fill="#B04A3F"/><text x="300" y="199.5" class="num" text-anchor="middle">5</text>
-        <!-- 7 egress via sentinel -->
-        <path class="ln" d="M514,284 L514,290" marker-end="url(#m1)"/>
-        <path class="ln" d="M616,322 L630,322" marker-end="url(#m1)"/><circle cx="623" cy="310" r="7" fill="#87867F"/><text x="623" y="313.5" class="num" text-anchor="middle">6</text>
-        <!-- 8 authd <-> OAuth -->
-        <path class="ln" d="M616,390 L630,390" marker-end="url(#m1)"/><path class="ln" d="M632,398 L618,398" marker-end="url(#m1)"/><circle cx="623" cy="376" r="7" fill="#87867F"/><text x="623" y="379.5" class="num" text-anchor="middle">7</text>
-        <!-- 9 voice -->
-        <path class="ln" d="M196,138 L214,350" marker-end="url(#m1)"/><circle cx="208" cy="300" r="7" fill="#87867F"/><text x="208" y="303.5" class="num" text-anchor="middle">8</text>
-        <!-- 10 model inference inferred -->
-        <path class="ln-b" d="M414,250 L396,420" marker-end="url(#m1b)"/><circle cx="403" cy="334" r="7" fill="#3A4EC9"/><text x="403" y="337.5" class="num" text-anchor="middle">9</text>
-        <!-- 11 peers / shared agents via ingress -->
-        <path class="ln" d="M616,144 L630,144" marker-end="url(#m1)"/><path class="ln" d="M632,152 L618,152" marker-end="url(#m1)"/><circle cx="623" cy="130" r="7" fill="#87867F"/><text x="623" y="133.5" class="num" text-anchor="middle">10</text>
-        <!-- 12 attestation verification against transparency (client verifies proof carried in msg2; proof sources external) -->
-        <path class="ln-b" d="M616,56 L630,56" marker-end="url(#m1b)"/><circle cx="623" cy="44" r="7" fill="#3A4EC9"/><text x="623" y="47.5" class="num" text-anchor="middle">11</text>
-        <!-- 13 channels -->
-        <path class="ln" d="M196,292 L214,180" marker-end="url(#m1)"/><circle cx="207" cy="236" r="7" fill="#87867F"/><text x="207" y="239.5" class="num" text-anchor="middle">12</text>
-        <!-- 14 CDN/telemetry -->
-        <path class="ln" d="M196,170 L214,486" marker-end="url(#m1)"/><circle cx="212" cy="420" r="7" fill="#87867F"/><text x="212" y="423.5" class="num" text-anchor="middle">13</text>
-        <!-- legend band -->
-        <line x1="14" y1="528" x2="746" y2="528" stroke="#F0EEE6" stroke-width="1.5"/>
-        <text x="14" y="548" class="lab" style="fill:#3D3D3A">读法：③ 和 ⑤ 是同一类通道（Noise over WSS 到共享入口），分别由 web 聊天层与原生节点各持一条；入口只做 TLS 终止与 vm_id 转发。</text>
-        <text x="14" y="566" class="lab" style="fill:#3D3D3A">VM 内所有对外访问（⑥）必经 sentinel；连接器登录（⑦）回调落在 VM 内的 authd；用户间互联（⑩）仍经共享入口，不是 P2P。</text>
-        <text x="14" y="584" class="lab" style="fill:#3D3D3A">推断项：模型推理位于 VM 之外（⑨）；证明里的透明日志证明由 VM 携带、客户端离线校验（⑪）。</text>
-        <text x="14" y="608" class="tiny" style="fill:#87867F">每用户 VM 主机名 &lt;vm_id&gt;.metaaivm.com 只是逻辑标识：生产域无 DNS 记录，客户端始终拨 hatch.metaaivm.com 并带 vm_id 参数。</text>
-      </svg>
+        <!-- top band: Meta control plane -->
+        <rect x="20" y="20" width="1360" height="200" rx="14" fill="none" stroke="#D1CFC5" stroke-width="1.5" stroke-dasharray="6 5"/>
+        <text x="36" y="44" style="fill:#87867F;font-weight:600;font-size:12px">Meta 控制面与媒体服务（不在 Noise 隧道内）</text>
+        <rect class="box" x="40" y="60" width="240" height="140" rx="10"/>
+        <text x="160" y="84" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">账号与登录</text>
+        <text x="160" y="106" class="lab" text-anchor="middle" style="fill:#3D3D3A">auth.meta.com · OIDC</text>
+        <text x="160" y="124" class="lab" text-anchor="middle" style="fill:#3D3D3A">passkey · OTP · 2FA · SSO</text>
+        <text x="160" y="142" class="lab" text-anchor="middle" style="fill:#3D3D3A">accountscenter.meta.com</text>
+        <text x="160" y="166" class="tiny" text-anchor="middle" style="fill:#87867F">产出：账号会话</text>
+        <rect class="box" x="310" y="60" width="300" height="140" rx="10"/>
+        <text x="460" y="84" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">控制面 API（/hatch/*，60 余条）</text>
+        <text x="460" y="106" class="lab" text-anchor="middle" style="fill:#3D3D3A">hatch-api.meta.ai · api.meta.ai</text>
+        <text x="460" y="124" class="lab" text-anchor="middle" style="fill:#3D3D3A">token · noise-notary-token · lease_vm</text>
+        <text x="460" y="142" class="lab" text-anchor="middle" style="fill:#3D3D3A">acs/bind-cvm · ssh-access/tokens · invites</text>
+        <text x="460" y="160" class="lab" text-anchor="middle" style="fill:#3D3D3A">subscription · channels · shared-agents/claim</text>
+        <text x="460" y="182" class="tiny" text-anchor="middle" style="fill:#87867F">产出：auth_token + notary_token · VM 租约</text>
+        <rect class="box" x="640" y="60" width="220" height="140" rx="10"/>
+        <text x="750" y="84" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">CDN · 上传 · 更新 · 遥测</text>
+        <text x="750" y="106" class="lab" text-anchor="middle" style="fill:#3D3D3A">scontent.xx.fbcdn.net</text>
+        <text x="750" y="124" class="lab" text-anchor="middle" style="fill:#3D3D3A">rupload.meta.ai</text>
+        <text x="750" y="142" class="lab" text-anchor="middle" style="fill:#3D3D3A">Sparkle appcast（EdDSA 签名）</text>
+        <text x="750" y="160" class="lab" text-anchor="middle" style="fill:#3D3D3A">QPL · analytics · Crashpad</text>
+        <rect class="box" x="890" y="60" width="220" height="140" rx="10"/>
+        <text x="1000" y="84" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">实时媒体</text>
+        <text x="1000" y="106" class="lab" text-anchor="middle" style="fill:#3D3D3A">meta-ai-realtime.facebook.com</text>
+        <text x="1000" y="124" class="lab" text-anchor="middle" style="fill:#3D3D3A">stun:edge-stun.facebook.com:3478</text>
+        <text x="1000" y="142" class="lab" text-anchor="middle" style="fill:#3D3D3A">shortwave ASR（WSS 双工）</text>
+        <text x="1000" y="160" class="lab" text-anchor="middle" style="fill:#3D3D3A">TTS 流（SSE）</text>
+        <rect x="1140" y="60" width="220" height="140" rx="10" fill="none" stroke="#3A4EC9" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <text x="1250" y="84" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">模型推理（位置推断）</text>
+        <text x="1250" y="106" class="lab" text-anchor="middle" style="fill:#3D3D3A">model.get / model.set</text>
+        <text x="1250" y="124" class="lab" text-anchor="middle" style="fill:#3D3D3A">generation 版本化选型</text>
+        <text x="1250" y="142" class="lab" text-anchor="middle" style="fill:#3D3D3A">hatch_big_boy_models 开关</text>
+        <text x="1250" y="166" class="tiny" text-anchor="middle" style="fill:#87867F">模型名在包内被抹掉</text>
+        <!-- main row headers -->
+        <text x="24" y="258" style="fill:#87867F;font-weight:600;font-size:12px">客户端</text>
+        
+        <text x="890" y="258" text-anchor="middle" style="fill:#87867F;font-weight:600;font-size:12px">用户 VM（每人一台，Noise 在此终止）</text>
+        <text x="1280" y="258" text-anchor="middle" style="fill:#87867F;font-weight:600;font-size:12px">外部</text>
+        <!-- client column -->
+        <rect class="box-d" x="20" y="270" width="280" height="250" rx="12"/>
+        <text x="160" y="294" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">Mac 应用（app_id=endo-macos）</text>
+        <text x="160" y="318" class="lab" text-anchor="middle" style="fill:#3D3D3A">原生壳：登录态 · 同源代理 /api/hatch/*</text>
+        <text x="160" y="338" class="lab" text-anchor="middle" style="fill:#3D3D3A">web 聊天层：Noise 会话 ①（聊天）</text>
+        <text x="160" y="358" class="lab" text-anchor="middle" style="fill:#3D3D3A">Endo 节点：Noise 会话 ②（工具）</text>
+        <text x="160" y="378" class="lab" text-anchor="middle" style="fill:#3D3D3A">HatchTools：邮件 · 信息 · 文件 · 日历</text>
+        <text x="160" y="398" class="lab" text-anchor="middle" style="fill:#3D3D3A">电脑控制（后台虚拟显示器）</text>
+        <text x="160" y="418" class="lab" text-anchor="middle" style="fill:#3D3D3A">rsys：语音通话 · Voyager 听写</text>
+        <text x="160" y="438" class="lab" text-anchor="middle" style="fill:#3D3D3A">Chrome 扩展（Native Messaging）</text>
+        <text x="160" y="458" class="lab" text-anchor="middle" style="fill:#3D3D3A">数据同步：日历 / 联系人 / 邮件 / iMessage</text>
+        <text x="160" y="478" class="lab" text-anchor="middle" style="fill:#3D3D3A">TCC 权限 · HITL 审批卡 · Blocked folders</text>
+        <text x="160" y="504" class="mono" text-anchor="middle" style="fill:#87867F">Ed25519 notary 背书钥 · rvKey（CVM）</text>
+        <rect class="box-d" x="20" y="540" width="280" height="70" rx="12"/>
+        <text x="160" y="564" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">浏览器 embed · 手机 app</text>
+        <text x="160" y="586" class="lab" text-anchor="middle" style="fill:#3D3D3A">同一 web 客户端，vm_id 可由入口解析</text>
+        <!-- ingress -->
+        <rect class="box-x" x="360" y="300" width="240" height="220" rx="12"/>
+        <text x="480" y="324" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">共享入口</text>
+        <text x="480" y="346" class="mono" text-anchor="middle" style="fill:#3D3D3A">wss://hatch.metaaivm.com/v1/noise</text>
+        <text x="480" y="368" class="lab" text-anchor="middle" style="fill:#3D3D3A">?vm_id&amp;auth_token&amp;notary_token</text>
+        <text x="480" y="386" class="lab" text-anchor="middle" style="fill:#3D3D3A">&amp;app_id&amp;app_version&amp;request_id</text>
+        <line x1="376" y1="398" x2="584" y2="398" stroke="#E3DACC"/>
+        <text x="480" y="418" class="lab" text-anchor="middle" style="fill:#3D3D3A">Meta 边缘：TLS 终止（匿名 401）</text>
+        <text x="480" y="436" class="lab" text-anchor="middle" style="fill:#3D3D3A">ingress_rev_proxy：校验 auth_token</text>
+        <text x="480" y="454" class="lab" text-anchor="middle" style="fill:#3D3D3A">按 vm_id 转发 NoiseTransportFrame</text>
+        <text x="480" y="478" class="lab" text-anchor="middle" style="fill:#B04A3F;font-weight:600">不持有 Noise 密钥，看不到明文</text>
+        <text x="480" y="500" class="tiny" text-anchor="middle" style="fill:#87867F">&lt;vm_id&gt;.metaaivm.com 仅为逻辑标识（无 DNS）</text>
+        <!-- VM container -->
+        <rect x="660" y="270" width="460" height="500" rx="14" fill="rgba(120,140,93,0.06)" stroke="#788C5D" stroke-width="1.5"/>
+        <rect class="box-ok" x="680" y="290" width="420" height="80" rx="10"/>
+        <text x="890" y="314" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">VM 网关（Noise 终止）</text>
+        <text x="890" y="336" class="lab" text-anchor="middle" style="fill:#3D3D3A">Noise XX · SEV-SNP 证明 · RV 密钥 HMAC 互证</text>
+        <text x="890" y="356" class="lab" text-anchor="middle" style="fill:#3D3D3A">hatch.noise.ServiceFrame 按 service 分发（stream_id 多路复用）</text>
+        <rect class="box-ok" x="680" y="390" width="240" height="250" rx="10"/>
+        <text x="790" y="414" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">daemon（agent 运行时）</text>
+        <text x="790" y="438" class="lab" text-anchor="middle" style="fill:#3D3D3A">sessions · chat.send / stream</text>
+        <text x="790" y="456" class="lab" text-anchor="middle" style="fill:#3D3D3A">工具路由 · 子代理 lane · compaction</text>
+        <text x="790" y="474" class="lab" text-anchor="middle" style="fill:#3D3D3A">nodes.invoke → 本机 / web 节点</text>
+        <text x="790" y="492" class="lab" text-anchor="middle" style="fill:#3D3D3A">VM 浏览器任务（lease · takeover）</text>
+        <text x="790" y="510" class="lab" text-anchor="middle" style="fill:#3D3D3A">tool.exec · imagine · web_fetch</text>
+        <text x="790" y="528" class="lab" text-anchor="middle" style="fill:#3D3D3A">cron 任务 · goals · feed · ideas</text>
+        <text x="790" y="546" class="lab" text-anchor="middle" style="fill:#3D3D3A">fs · library · memory · spaces</text>
+        <text x="790" y="564" class="lab" text-anchor="middle" style="fill:#3D3D3A">peers · shared agents · channels</text>
+        <text x="790" y="582" class="lab" text-anchor="middle" style="fill:#3D3D3A">HITL 门控 · 能力注册</text>
+        <text x="790" y="606" class="tiny" text-anchor="middle" style="fill:#87867F">service=daemon（45 条路由显式标记）</text>
+        <text x="790" y="624" class="tiny" text-anchor="middle" style="fill:#87867F">未标记的路由默认走 daemon</text>
+        <rect class="box-ok" x="940" y="390" width="160" height="70" rx="10"/>
+        <text x="1020" y="414" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">sentinel（出网管控）</text>
+        <text x="1020" y="434" class="lab" text-anchor="middle" style="fill:#3D3D3A">tproxy · mitm · SNI 拒绝</text>
+        <text x="1020" y="450" class="lab" text-anchor="middle" style="fill:#3D3D3A">审批 · 作用域 · 网络规则</text>
+        <rect class="box-ok" x="940" y="480" width="160" height="60" rx="10"/>
+        <text x="1020" y="504" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">vault</text>
+        <text x="1020" y="524" class="lab" text-anchor="middle" style="fill:#3D3D3A">LUKS 加密盘 · 凭据库</text>
+        <rect class="box-ok" x="940" y="560" width="160" height="60" rx="10"/>
+        <text x="1020" y="584" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">authd</text>
+        <text x="1020" y="604" class="lab" text-anchor="middle" style="fill:#3D3D3A">OAuth / API key 回调</text>
+        <rect class="box-ok" x="940" y="640" width="160" height="40" rx="10"/>
+        <text x="1020" y="665" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:12px">ssh_access <tspan class="tiny" style="fill:#3D3D3A;font-weight:400">· 需 notary 头</tspan></text>
+        <rect class="box" x="680" y="660" width="240" height="90" rx="10"/>
+        <text x="800" y="682" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:12px">持久化（VM 文件系统）</text>
+        <text x="800" y="702" class="tiny" text-anchor="middle" style="fill:#3D3D3A">/home/hatch/workspace/</text>
+        <text x="800" y="716" class="tiny" text-anchor="middle" style="fill:#3D3D3A">{your_files, artifacts, podcasts, conversations}</text>
+        <text x="800" y="730" class="tiny" text-anchor="middle" style="fill:#3D3D3A">uploads/ · /MEMORY.md · git 历史 · fs.subscribe</text>
+        <text x="1020" y="712" class="tiny" text-anchor="middle" style="fill:#87867F">VM 内浏览器 · Spaces 进程</text>
+        <text x="1020" y="728" class="tiny" text-anchor="middle" style="fill:#87867F">均受 sentinel 出网约束</text>
+        <!-- external column -->
+        <rect class="box" x="1180" y="270" width="200" height="70" rx="12"/>
+        <text x="1280" y="294" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">透明日志与吊销</text>
+        <text x="1280" y="314" class="lab" text-anchor="middle" style="fill:#3D3D3A">Cloudflare Plexi · Sigstore</text>
+        <text x="1280" y="330" class="tiny" text-anchor="middle" style="fill:#87867F">证明随 msg2 携带，客户端离线校验</text>
+        <rect class="box" x="1180" y="360" width="200" height="70" rx="12"/>
+        <text x="1280" y="384" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">其他用户的 VM</text>
+        <text x="1280" y="404" class="lab" text-anchor="middle" style="fill:#3D3D3A">peers（SAS 验证）· 共享 agent</text>
+        <text x="1280" y="420" class="tiny" text-anchor="middle" style="fill:#87867F">经同一共享入口，非 P2P</text>
+        <rect class="box" x="1180" y="450" width="200" height="60" rx="12"/>
+        <text x="1280" y="474" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">互联网</text>
+        <text x="1280" y="494" class="lab" text-anchor="middle" style="fill:#3D3D3A">网页 · SaaS API · 下载</text>
+        <rect class="box" x="1180" y="610" width="200" height="70" rx="12"/>
+        <text x="1280" y="634" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">IM 渠道（用户手机）</text>
+        <text x="1280" y="654" class="lab" text-anchor="middle" style="fill:#3D3D3A">WhatsApp · Messenger · Telegram</text>
+        <text x="1280" y="670" class="tiny" text-anchor="middle" style="fill:#87867F">channels.link 绑定；送达路径推断</text>
+        <path class="ln-b" d="M1176,640 L1122,640" marker-end="url(#m1b)"/><path class="ln-b" d="M1122,650 L1176,650" marker-end="url(#m1b)"/><circle cx="1140" cy="626" r="8" fill="#3A4EC9"/><text x="1140" y="630" class="num" text-anchor="middle">12</text>
+        <rect class="box" x="1180" y="530" width="200" height="60" rx="12"/>
+        <text x="1280" y="554" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">OAuth 提供方</text>
+        <text x="1280" y="574" class="lab" text-anchor="middle" style="fill:#3D3D3A">Google · 1Password · 自定义</text>
+        <!-- flows: client -> control plane (fan out from Mac top) -->
+        <path class="ln" d="M80,270 L140,204" marker-end="url(#m1)"/><circle cx="102" cy="246" r="8" fill="#87867F"/><text x="102" y="250" class="num" text-anchor="middle">1</text>
+        <path class="ln" d="M140,270 L430,204" marker-end="url(#m1)"/><circle cx="246" cy="246" r="8" fill="#87867F"/><text x="246" y="250" class="num" text-anchor="middle">2</text>
+        <path class="ln" d="M200,270 L720,204" marker-end="url(#m1)"/><circle cx="420" cy="242" r="8" fill="#87867F"/><text x="420" y="246" class="num" text-anchor="middle">13</text>
+        <path class="ln" d="M260,270 L960,204" marker-end="url(#m1)"/><circle cx="600" cy="238" r="8" fill="#87867F"/><text x="600" y="242" class="num" text-anchor="middle">8</text>
+        <!-- IM channel -> control plane via gutter -->
+        <!-- main path: client -> ingress -> VM gateway (green) -->
+        <path class="ln-ok" d="M302,340 L356,340" marker-end="url(#m1o)"/><circle cx="329" cy="326" r="8" fill="#788C5D"/><text x="329" y="330" class="num" text-anchor="middle">3</text>
+        <path class="ln-ok" d="M602,340 L676,340" marker-end="url(#m1o)"/><circle cx="639" cy="326" r="8" fill="#788C5D"/><text x="639" y="330" class="num" text-anchor="middle">4</text>
+        <text x="639" y="358" class="tiny" text-anchor="middle" style="fill:#788C5D">原样转发</text>
+        <!-- reverse node invoke (red dashed) -->
+        <path class="ln-d" d="M676,470 L602,470" marker-end="url(#m1r)"/><path class="ln-d" d="M356,470 L302,470" marker-end="url(#m1r)"/>
+        <circle cx="639" cy="486" r="8" fill="#B04A3F"/><text x="639" y="490" class="num" text-anchor="middle">5</text>
+        <text x="639" y="508" class="tiny" text-anchor="middle" style="fill:#B04A3F">node.invoke</text>
+        <text x="329" y="488" class="tiny" text-anchor="middle" style="fill:#B04A3F">节点通道</text>
+        <!-- embed -> ingress -->
+        <path class="ln-ok" d="M302,575 L340,575 L340,520 L420,520" marker-end="url(#m1o)"/>
+        <!-- inside VM -->
+        <path class="ln" d="M790,372 L790,386" marker-end="url(#m1)"/><path class="ln" d="M1020,372 L1020,386" marker-end="url(#m1)"/>
+        <path class="ln" d="M922,425 L936,425" marker-end="url(#m1)"/><path class="ln" d="M922,510 L936,510" marker-end="url(#m1)"/><path class="ln" d="M922,590 L936,590" marker-end="url(#m1)"/>
+        <path class="ln" d="M790,642 L790,656" marker-end="url(#m1)"/><path class="ln" d="M810,656 L810,642" marker-end="url(#m1)"/>
+        <!-- VM -> external -->
+        <path class="ln" d="M1102,425 L1176,478" marker-end="url(#m1)"/><circle cx="1140" cy="440" r="8" fill="#87867F"/><text x="1140" y="444" class="num" text-anchor="middle">6</text>
+        <path class="ln" d="M1102,585 L1176,560" marker-end="url(#m1)"/><path class="ln" d="M1176,572 L1102,597" marker-end="url(#m1)"/><circle cx="1140" cy="600" r="8" fill="#87867F"/><text x="1140" y="604" class="num" text-anchor="middle">7</text>
+        <path class="ln" d="M1102,350 L1176,392" marker-end="url(#m1)"/><path class="ln" d="M1176,402 L1102,362" marker-end="url(#m1)"/><circle cx="1140" cy="396" r="8" fill="#87867F"/><text x="1140" y="400" class="num" text-anchor="middle">10</text>
+        <path class="ln-b" d="M1102,310 L1176,300" marker-end="url(#m1b)"/><circle cx="1140" cy="290" r="8" fill="#3A4EC9"/><text x="1140" y="294" class="num" text-anchor="middle">11</text>
+        <!-- VM -> model inference (inferred, blue) -->
+        <path class="ln-b" d="M1040,270 L1200,204" marker-end="url(#m1b)"/><circle cx="1120" cy="248" r="8" fill="#3A4EC9"/><text x="1120" y="252" class="num" text-anchor="middle">9</text>
+        <!-- notes -->
+        <line x1="20" y1="786" x2="1380" y2="786" stroke="#F0EEE6" stroke-width="1.5"/>
+        <text x="20" y="806" class="lab" style="fill:#3D3D3A">读法：③④ 是一条端到端 Noise 隧道，中间的共享入口只做 TLS 终止、token 校验与按 vm_id 转发；⑤ 是 VM 通过第二条 Noise 会话（原生节点）反向下发工具调用；①②⑧⑫⑬ 都是旁路，不进隧道。</text>
+        <text x="20" y="826" class="tiny" style="fill:#87867F">蓝点线为推断：模型推理在 VM 外（⑨）；透明日志证明由 VM 随 msg2 携带、客户端离线校验（⑪）。编号对应下表。</text>
+      </svg></div>
+
       <figcaption><b>图的中心不是 Meta 的 API，而是用户自己的 VM</b>：控制面只负责"把你引到你的 VM 并给你凭据"，之后的对话、工具、文件、记忆都在 VM 与客户端之间的 Noise 隧道里完成。</figcaption>
     </figure>
     <div class="card">
@@ -272,7 +306,7 @@
         <tr><td>9</td><td>模型推理</td><td><span class="warn">推断</span>：VM 外的推理服务</td><td><code>model.get/set</code> 带 generation；<code>hatch_big_boy_models</code> 开关；模型名在包内被抹掉。</td></tr>
         <tr><td>10</td><td>用户间互联</td><td>peers：邀请 → SAS 短认证串人工比对 → 收件箱投递；shared agents：对方 VM 经共享入口 + OAuth 令牌，<code>connectionClass=shared_agent</code></td><td>关系带代际号与修订号；共享 agent 连接要求 msg2 必须是证明、拒绝 RV 质询。</td></tr>
         <tr><td>11</td><td>证明校验</td><td>VM 在 msg2 携带 <code>thatch.attestation.v1.AttestationBundle</code>；客户端本地验证</td><td>VCEK→ASK→ARK 链、CRL、report_data 绑定、度量 ∈ image_manifest、芯片白名单、Plexi/Sigstore 透明证明、吊销证据。</td></tr>
-        <tr><td>12</td><td>IM 渠道</td><td>WhatsApp / Messenger / Telegram companion，<code>channels.link</code></td><td>渠道消息进入 daemon 成为触发源；控制面做渠道绑定。</td></tr>
+        <tr><td>12</td><td>IM 渠道</td><td>用户在手机 WhatsApp / Messenger / Telegram 里与 agent 对话；<code>channels.link / status / unlink</code>，companion 解锁</td><td>渠道绑定经控制面完成；消息送达 VM daemon 的具体路径<span class="warn">属推断</span>（图中蓝点线）。</td></tr>
         <tr><td>13</td><td>内容与遥测</td><td>fbcdn / rupload.meta.ai / Sparkle appcast（EdDSA）/ QPL、Crashpad、Sentry</td><td>与 VM 隧道无关的旁路。</td></tr>
       </table>
       <div class="delta"><b>小结：</b>鉴权发生在三个不同的地方：<b>控制面</b>（你是谁，给你 token）、<b>入口</b>（token 对不对，转给哪台 VM）、<b>VM 内</b>（Noise 对端是谁、RV 密钥对不对、这个动作/这次出网准不准）。边缘只能做第二件事。</div>
