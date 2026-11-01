@@ -677,60 +677,22 @@
     <h2><span class="n">06</span>消息级协议：RPC、订阅流与事件信封</h2>
     <p class="sub">答案一句话：<strong>一条 WebSocket，一层 Noise，里面是"HTTP 形状的 RPC"加"NDJSON 事件流"</strong>。没有独立的 JSON-RPC 或 gRPC；路由表里甚至没有 <code>chat.send</code>，发消息就是打开一条名叫 <code>chat.stream</code> 的流。</p>
     <figure>
-      <div class="fig-h">图 6 · 四种消息各走哪条路<span>同一条 Noise 连接，按 stream_id 复用</span></div>
-      <svg class="rf" viewBox="0 0 1040 560" role="img" aria-label="消息级协议时序">
+      <div class="fig-h">图 6 · 四种消息各走哪条路<span>可左右拖动 · 同一条 Noise 连接，按 stream_id 复用</span></div>
+      <div class="scroll"><svg class="rf wide" viewBox="0 0 1400 868" role="img" aria-label="消息级协议时序">
         <defs>
           <marker id="p6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker>
           <marker id="p6o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#788C5D"/></marker>
           <marker id="p6r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B04A3F"/></marker>
         </defs>
-        <!-- lifelines -->
-        <rect class="box-d" x="20" y="14" width="200" height="34" rx="8"/><text x="120" y="36" text-anchor="middle" style="fill:#141413;font-weight:600">web 聊天层（客户端）</text>
-        <rect class="box-ok" x="820" y="14" width="200" height="34" rx="8"/><text x="920" y="36" text-anchor="middle" style="fill:#141413;font-weight:600">VM：daemon / sentinel</text>
-        <line x1="120" y1="48" x2="120" y2="520" stroke="#D1CFC5" stroke-dasharray="3 4"/>
-        <line x1="920" y1="48" x2="920" y2="520" stroke="#D1CFC5" stroke-dasharray="3 4"/>
-        <!-- Row A: send + receive -->
-        <rect x="140" y="62" width="760" height="112" rx="8" fill="rgba(120,140,93,0.06)" stroke="#788C5D" stroke-width="1"/>
-        <text x="150" y="80" style="fill:#141413;font-weight:600;font-size:11.5px">A · 发消息并收这一轮的回复：一条 subscription 流</text>
-        <path class="ln-ok" d="M126,98 L914,98" marker-end="url(#p6o)"/>
-        <text x="520" y="92" class="tiny" text-anchor="middle" style="fill:#3D3D3A">request 帧：POST /chat/stream　body {text, attachments, reply_to_message_id, session_id, stream_lane…}　（服务 daemon，stream_id = n）</text>
-        <path class="ln-ok" d="M914,118 L126,118" marker-end="url(#p6o)"/>
-        <text x="520" y="112" class="tiny" text-anchor="middle" style="fill:#3D3D3A">response 帧（ack）：status 200，body {ok:true, result}　← 此时消息进入 deliveryPhase awaiting_ack → 已送达</text>
-        <path class="ln-ok" d="M914,138 L126,138" marker-end="url(#p6o)"/><path class="ln-ok" d="M914,150 L126,150" marker-end="url(#p6o)"/><path class="ln-ok" d="M914,162 L126,162" marker-end="url(#p6o)"/>
-        <text x="520" y="134" class="tiny" text-anchor="middle" style="fill:#3D3D3A">body_chunk 帧 ×N：NDJSON，每行一个事件信封 {type:"event", event:"delta.message_start", payload, seq, ts_ms}</text>
-        <text x="520" y="160" class="tiny" text-anchor="middle" style="fill:#3D3D3A">… delta.text_append … delta.tool_start / tool_done … delta.presentation … delta.message_done … delta.turn_done（同一 stream_id，直到 end_body）</text>
-        <!-- Row B: long-lived subscribe -->
-        <rect x="140" y="186" width="760" height="94" rx="8" fill="rgba(120,140,93,0.06)" stroke="#788C5D" stroke-width="1"/>
-        <text x="150" y="204" style="fill:#141413;font-weight:600;font-size:11.5px">B · 服务端主动推送（后台工作、定时任务、其它设备的发言）：长期订阅流</text>
-        <path class="ln-ok" d="M126,222 L914,222" marker-end="url(#p6o)"/>
-        <text x="520" y="216" class="tiny" text-anchor="middle" style="fill:#3D3D3A">request 帧：POST /chat/subscribe　（连上就开，ack 超时 30 s，重连后自动重订；另有 activity / tasks / fs / computer / sessions 等 .subscribe）</text>
-        <path class="ln-ok" d="M914,246 L126,246" marker-end="url(#p6o)"/><path class="ln-ok" d="M914,262 L126,262" marker-end="url(#p6o)"/>
-        <text x="520" y="240" class="tiny" text-anchor="middle" style="fill:#3D3D3A">body_chunk：{event:"message.assistant", payload:{…, isBackground, stream_lane, agent_id, parent_agent_id, visibility, channel_context}}</text>
-        <text x="520" y="272" class="tiny" text-anchor="middle" style="fill:#3D3D3A">{event:"sessions.updated"} · {event:"tasks.updated"} · {event:"fs.updated"} · {event:"node.connected"} · {event:"approvals.snapshot"} · {event:"client.invoke"}</text>
-        <!-- Row C: HITL -->
-        <rect x="140" y="292" width="760" height="112" rx="8" fill="rgba(217,119,87,0.07)" stroke="#D97757" stroke-width="1"/>
-        <text x="150" y="310" style="fill:#141413;font-weight:600;font-size:11.5px">C · HITL 审批：事件推送到达，单次 RPC 回答（走 sentinel 服务）</text>
-        <path class="ln-d" d="M914,328 L126,328" marker-end="url(#p6r)"/>
-        <text x="520" y="322" class="tiny" text-anchor="middle" style="fill:#3D3D3A">订阅流事件 {event:"approvals.snapshot", payload:{pending:[{approval_id, approval_type, decision_options, message_revision…}], recent:[…]}}</text>
-        <path class="ln-d" d="M914,346 L126,346" marker-end="url(#p6r)"/>
-        <text x="520" y="340" class="tiny" text-anchor="middle" style="fill:#3D3D3A">同时聊天流里出现带 approval 的消息（approval_card，status pending_user_confirmation / background_pending_user_confirmation）；composer 锁定</text>
-        <path class="ln" d="M126,370 L914,370" marker-end="url(#p6)"/>
-        <text x="520" y="364" class="tiny" text-anchor="middle" style="fill:#3D3D3A">request 帧：POST /approvals/{approval_id}/decide　service=sentinel　body {approval_id, decision, always_scope?, expected_message_revision, notification_channel:"ui"}</text>
-        <path class="ln" d="M914,390 L126,390" marker-end="url(#p6)"/>
-        <text x="520" y="384" class="tiny" text-anchor="middle" style="fill:#3D3D3A">response {approval:{…}}；随后新的 approvals.snapshot 事件推下来，卡片消失，被挂起的轮次继续（"Resumed after approval"）</text>
-        <text x="520" y="400" class="tiny" text-anchor="middle" style="fill:#87867F">改写待发内容：POST /approvals/{id}/edit-message；出网类审批同一套接口；本机工具的审批由原生节点处理，但快照共享</text>
-        <!-- Row D: server->client command -->
-        <rect x="140" y="416" width="760" height="76" rx="8" fill="rgba(217,119,87,0.07)" stroke="#D97757" stroke-width="1"/>
-        <text x="150" y="434" style="fill:#141413;font-weight:600;font-size:11.5px">D · 服务端向客户端下发命令（web 也是一个"节点"）</text>
-        <path class="ln-d" d="M914,452 L126,452" marker-end="url(#p6r)"/>
-        <text x="520" y="446" class="tiny" text-anchor="middle" style="fill:#3D3D3A">订阅流事件 {event:"client.invoke", payload:{invoke_id, command_id:"ui.navigate.chat.session", params, seq}}　→ 按 command_id 查已注册的 handler</text>
-        <path class="ln" d="M126,476 L914,476" marker-end="url(#p6)"/>
-        <text x="520" y="470" class="tiny" text-anchor="middle" style="fill:#3D3D3A">request 帧：POST /client/invoke-result　body {invoke_id, ok:true} 或 {invoke_id, ok:false, error:{code, message}}　（原生节点：nodes.invoke_ack / invoke_result）</text>
-        <!-- liveness -->
-        <text x="520" y="512" class="tiny" text-anchor="middle" style="fill:#87867F">探活：每 10 s 一次单次 RPC　POST /api/ping　body {presence:"active"|"away"}　既是心跳也是在场状态上报；10 s 无应答 → 关闭码 4002 → 重连</text>
-        <line x1="20" y1="530" x2="1020" y2="530" stroke="#F0EEE6" stroke-width="1.5"/>
-        <text x="20" y="550" class="lab" style="fill:#3D3D3A">绿 = 流式（一个 request 帧换 ack + 多个 body_chunk）· 灰 = 单次 RPC（一个 request 帧换一个 response 帧）· 赤色虚线 = 服务端主动推下来的事件。全部复用同一条 Noise 连接，靠 stream_id 区分。</text>
-      </svg>
+        <rect class="box-d" x="40" y="14" width="260" height="40" rx="10"/><text x="170" y="39" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:14px">web 聊天层（客户端）</text>
+        <rect class="box-ok" x="1100" y="14" width="260" height="40" rx="10"/><text x="1230" y="39" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:14px">VM：daemon / sentinel</text>
+        <line x1="170" y1="54" x2="170" y2="806" stroke="#D1CFC5" stroke-dasharray="3 4"/>
+        <line x1="1230" y1="54" x2="1230" y2="806" stroke="#D1CFC5" stroke-dasharray="3 4"/>
+        <rect x="190" y="70" width="1020" height="178" rx="10" fill="rgba(120,140,93,0.06)" stroke="#788C5D" stroke-width="1"/><text x="204" y="92" style="fill:#141413;font-weight:600;font-size:13.5px">A · 发消息并收这一轮的回复：一条 subscription 流</text><text x="700" y="116" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">request 帧：POST /chat/stream　body {text, attachments, reply_to_message_id, session_id, stream_lane…}　服务 daemon，stream_id = n</text><path class="ln-ok" d="M176,124 L1224,124" marker-end="url(#p6o)"/><text x="700" y="150" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">response 帧（ack）：status 200，body {ok:true, result}　← 此时消息从 deliveryPhase awaiting_ack 变为已送达</text><path class="ln-ok" d="M1224,158 L176,158" marker-end="url(#p6o)"/><text x="700" y="184" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">body_chunk 帧 ×N：NDJSON，每行一个事件信封 {type:"event", event:"delta.message_start", payload, seq, ts_ms}</text><path class="ln-ok" d="M1224,192 L176,192" marker-end="url(#p6o)"/><path class="ln-ok" d="M1224,199 L176,199" marker-end="url(#p6o)"/><path class="ln-ok" d="M1224,206 L176,206" marker-end="url(#p6o)"/><text x="700" y="226" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">… delta.text_append … delta.tool_start / tool_done … delta.presentation … delta.message_done … delta.turn_done　（同一 stream_id，直到 end_body）</text><rect x="190" y="264" width="1020" height="144" rx="10" fill="rgba(120,140,93,0.06)" stroke="#788C5D" stroke-width="1"/><text x="204" y="286" style="fill:#141413;font-weight:600;font-size:13.5px">B · 服务端主动推送（后台工作、定时任务、其它设备的发言）：长期订阅流</text><text x="700" y="310" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">request 帧：POST /chat/subscribe　连上就开，ack 超时 30 s，重连后自动重订；另有 activity / tasks / fs / computer / sessions 等 .subscribe</text><path class="ln-ok" d="M176,318 L1224,318" marker-end="url(#p6o)"/><text x="700" y="344" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">body_chunk：{event:"message.assistant", payload:{…, isBackground, stream_lane, agent_id, parent_agent_id, visibility, channel_context}}</text><path class="ln-ok" d="M1224,352 L176,352" marker-end="url(#p6o)"/><path class="ln-ok" d="M1224,359 L176,359" marker-end="url(#p6o)"/><text x="700" y="386" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">{event:"sessions.updated"} · {event:"tasks.updated"} · {event:"fs.updated"} · {event:"node.connected"} · {event:"approvals.snapshot"} · {event:"client.invoke"}</text><rect x="190" y="424" width="1020" height="212" rx="10" fill="rgba(217,119,87,0.07)" stroke="#D97757" stroke-width="1"/><text x="204" y="446" style="fill:#141413;font-weight:600;font-size:13.5px">C · HITL 审批：事件推送到达，单次 RPC 回答（走 sentinel 服务）</text><text x="700" y="470" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">订阅流事件 {event:"approvals.snapshot", payload:{pending:[{approval_id, approval_type, decision_options, message_revision…}], recent:[…]}}</text><path class="ln-d" d="M1224,478 L176,478" marker-end="url(#p6r)"/><text x="700" y="504" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">同时聊天流里出现带 approval 的消息（approval_card，status pending_user_confirmation / background_pending_user_confirmation）；composer 锁定</text><path class="ln-d" d="M1224,512 L176,512" marker-end="url(#p6r)"/><text x="700" y="538" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">request 帧：POST /approvals/{approval_id}/decide（sentinel）　body {approval_id, decision, always_scope?, expected_message_revision, notification_channel:"ui"}</text><path class="ln" d="M176,546 L1224,546" marker-end="url(#p6)"/><text x="700" y="572" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">response {approval:{…}}；随后新的 approvals.snapshot 事件推下来，卡片消失，被挂起的轮次继续（"Resumed after approval"）</text><path class="ln" d="M1224,580 L176,580" marker-end="url(#p6)"/><text x="700" y="614" text-anchor="middle" style="fill:#87867F;font-size:12px">改写待发内容：POST /approvals/{id}/edit-message；出网类审批同一套接口；本机工具的审批由原生节点处理，但快照共享</text><rect x="190" y="652" width="1020" height="110" rx="10" fill="rgba(217,119,87,0.07)" stroke="#D97757" stroke-width="1"/><text x="204" y="674" style="fill:#141413;font-weight:600;font-size:13.5px">D · 服务端向客户端下发命令（web 也是一个"节点"）</text><text x="700" y="698" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">订阅流事件 {event:"client.invoke", payload:{invoke_id, command_id:"ui.navigate.chat.session", params, seq}}　→ 按 command_id 查已注册的 handler</text><path class="ln-d" d="M1224,706 L176,706" marker-end="url(#p6r)"/><text x="700" y="732" text-anchor="middle" style="fill:#3D3D3A;font-size:12px">request 帧：POST /client/invoke-result　body {invoke_id, ok:true} 或 {invoke_id, ok:false, error:{code, message}}　原生节点：nodes.invoke_ack / invoke_result</text><path class="ln" d="M176,740 L1224,740" marker-end="url(#p6)"/>
+        <text x="700" y="792" text-anchor="middle" style="fill:#87867F;font-size:12px">探活：每 10 s 一次单次 RPC　POST /api/ping　body {presence:"active"|"away"}　既是心跳也是在场状态上报；10 s 无应答 → 关闭码 4002 → 重连</text>
+        <line x1="20" y1="818" x2="1380" y2="818" stroke="#F0EEE6" stroke-width="1.5"/>
+        <text x="20" y="844" style="fill:#3D3D3A;font-size:12.5px">绿 = 流式（一个 request 帧换 ack + 多个 body_chunk）· 灰 = 单次 RPC（一个 request 帧换一个 response 帧）· 赤色虚线 = 服务端主动推下来的事件。全部复用同一条 Noise 连接，靠 stream_id 区分。</text>
+      </svg></div>
       <figcaption><b>只有两种原语</b>：单次 RPC 和订阅流。"发消息"是一次订阅流（<code>chat.stream</code>），"收回复"是它的 body_chunk；"审批"是事件推送加一次 RPC；"服务端命令"是事件推送加一次 RPC。所有事件都是同一种 NDJSON 信封。</figcaption>
     </figure>
 
