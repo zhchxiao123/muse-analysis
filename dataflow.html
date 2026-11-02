@@ -226,10 +226,10 @@
         <text x="1020" y="450" class="lab" text-anchor="middle" style="fill:#3D3D3A">审批 · 作用域 · 网络规则</text>
         <rect class="box-ok" x="940" y="480" width="160" height="60" rx="10"/>
         <text x="1020" y="504" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">vault</text>
-        <text x="1020" y="524" class="lab" text-anchor="middle" style="fill:#3D3D3A">LUKS 加密盘 · 凭据库</text>
+        <text x="1020" y="524" class="lab" text-anchor="middle" style="fill:#3D3D3A">LUKS 加密盘 · /luks/status</text>
         <rect class="box-ok" x="940" y="560" width="160" height="60" rx="10"/>
         <text x="1020" y="584" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:13px">authd</text>
-        <text x="1020" y="604" class="lab" text-anchor="middle" style="fill:#3D3D3A">OAuth / API key 回调</text>
+        <text x="1020" y="604" class="lab" text-anchor="middle" style="fill:#3D3D3A">OAuth 回调 · credentials.*</text>
         <rect class="box-ok" x="940" y="640" width="160" height="40" rx="10"/>
         <text x="1020" y="665" text-anchor="middle" style="fill:#141413;font-weight:600;font-size:12px">ssh_access <tspan class="tiny" style="fill:#3D3D3A;font-weight:400">· 需 notary 头</tspan></text>
         <rect class="box" x="680" y="660" width="240" height="90" rx="10"/>
@@ -304,7 +304,7 @@
         <tr><td>4</td><td>入口 → VM</td><td>转发 <code>ingress_rev_proxy.NoiseTransportFrame</code>（分块、AES-GCM 密文）</td><td>边缘不持有 Noise 密钥，看不到明文；VM 网关解密后按 <code>hatch.noise.ServiceRequest.service</code> 分发。</td></tr>
         <tr><td>5</td><td>节点通道（反向）</td><td>原生 <code>HCHTigonRoutedNoiseGatewayTransport</code>，同样到共享入口；<code>node.register / heartbeat</code>，VM 下发 <code>node.invoke</code></td><td>节点注册绑定 <code>node_id + link_nonce</code>；每个 invoke 过权限门控与 HITL 审批卡；文件结果经 <code>NodeInvokeResultUploader</code>。</td></tr>
         <tr><td>6</td><td>VM 出网</td><td>透明代理 tproxy，可 MITM，按 SNI 拒绝，网络规则</td><td><code>egress.approvals</code> 按"域名 + 任务"审批；作用域权限（连接器 / 定时任务 / 聊天）；可撤销重置。</td></tr>
-        <tr><td>7</td><td>连接器授权</td><td>OAuth / API key / 用户名密码，回调到 <code>/v1/*-auth/callback</code>（authd）</td><td>凭据进 vault（<code>credentials.*</code>，1Password 集成）；共享给他人时只给描述符不给明文。</td></tr>
+        <tr><td>7</td><td>连接器授权</td><td>OAuth / API key / 用户名密码，回调到 <code>/v1/*-auth/callback</code>（authd）</td><td>凭据由 authd 管理（<code>/v1/credentials/*</code> 全部标 service=authd，含 capture 与 1Password 集成），落盘在 vault 管理的 LUKS 加密卷上（推断）；共享给他人时只给描述符不给明文。</td></tr>
         <tr><td>8</td><td>语音</td><td>rsys WebRTC（STUN/TURN）到 <code>meta-ai-realtime.facebook.com</code>；数据通道跑 Nebula（OpenAI Realtime 形状，Thrift）；ASR WSS；TTS SSE</td><td>由 <code>voice.calls.join</code> / <code>media_endpoint</code> 建立；通话时上报位置（文案明示）。</td></tr>
         <tr><td>9</td><td>模型推理</td><td><span class="warn">推断</span>：VM 外的推理服务</td><td><code>model.get/set</code> 带 generation；<code>hatch_big_boy_models</code> 开关；模型名在包内被抹掉。</td></tr>
         <tr><td>10</td><td>用户间互联</td><td>peers：邀请 → SAS 短认证串人工比对 → 收件箱投递；shared agents：对方 VM 经共享入口 + OAuth 令牌，<code>connectionClass=shared_agent</code></td><td>关系带代际号与修订号；共享 agent 连接要求 msg2 必须是证明、拒绝 RV 质询。</td></tr>
@@ -432,7 +432,7 @@
         <rect class="box" x="550" y="90" width="196" height="40" rx="8"/><text x="648" y="108" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">服务端工具（VM 内）</text><text x="648" y="122" class="tiny" text-anchor="middle" style="fill:#3D3D3A">exec · web_fetch · imagine · zeitgeist</text>
         <rect class="box-x" x="550" y="140" width="196" height="40" rx="8"/><text x="648" y="158" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">本机节点（Mac / web）</text><text x="648" y="172" class="tiny" text-anchor="middle" style="fill:#3D3D3A">nodes.invoke → 60+ HatchTools</text>
         <rect class="box" x="550" y="190" width="196" height="40" rx="8"/><text x="648" y="208" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">VM 浏览器任务</text><text x="648" y="222" class="tiny" text-anchor="middle" style="fill:#3D3D3A">browser.lease · takeover · 流附着</text>
-        <rect class="box" x="550" y="240" width="196" height="40" rx="8"/><text x="648" y="258" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">连接器 / 凭据</text><text x="648" y="272" class="tiny" text-anchor="middle" style="fill:#3D3D3A">authd OAuth · vault · 1Password</text>
+        <rect class="box" x="550" y="240" width="196" height="40" rx="8"/><text x="648" y="258" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">连接器 / 凭据</text><text x="648" y="272" class="tiny" text-anchor="middle" style="fill:#3D3D3A">authd：OAuth · credentials.* · 1Password</text>
         <path class="ln" d="M512,110 L546,110" marker-end="url(#m3)"/><path class="ln-d" d="M512,160 L546,160" marker-end="url(#m3r)"/><path class="ln" d="M512,210 L546,210" marker-end="url(#m3)"/><path class="ln" d="M512,260 L546,260" marker-end="url(#m3)"/>
         <!-- sentinel gate on the right -->
         <rect class="box-x" x="550" y="296" width="196" height="34" rx="8"/><text x="648" y="317" class="tiny" text-anchor="middle" style="fill:#141413;font-weight:600">sentinel 出网审批 → 互联网 / SaaS</text>
@@ -451,7 +451,7 @@
     <div class="g3">
       <div class="card"><h3>能力出口 ① 服务端工具</h3><div class="tag">tool.exec · web_fetch · imagine · zeitgeist</div><p>在 VM 内执行，出网经 sentinel。审批图标把 <code>tool.exec</code> 标为"地球"，推断为带网络的执行环境；"Hatch folder" 之外运行程序需额外授权。</p></div>
       <div class="card"><h3>能力出口 ② 本机节点</h3><div class="tag">nodes.sync → invoke → invoke_ack / result</div><p>唯一在用户设备上执行的出口。电脑控制在后台虚拟显示器进行，文件、邮件、信息、日历等工具各有读/写/动作三级授权；web 客户端自己也是节点，接受 <code>ui.navigate.*</code> 等 27 个 UI 命令。</p></div>
-      <div class="card"><h3>能力出口 ③④ 浏览器与连接器</h3><div class="tag">browser_task.* · authd · vault</div><p>VM 内租用浏览器执行网页任务，用户可随时 takeover；连接器 OAuth 回调落在 authd，凭据存 vault，<code>credentials.capture</code> 可从浏览器登录中捕获凭据。</p></div>
+      <div class="card"><h3>能力出口 ③④ 浏览器与连接器</h3><div class="tag">browser_task.* · authd（credentials.*）· vault（LUKS）</div><p>VM 内租用浏览器执行网页任务，用户可随时 takeover；连接器 OAuth 回调与凭据库都在 authd（<code>/v1/credentials/*</code>），<code>credentials.capture</code> 可从浏览器登录中捕获凭据；vault 负责 LUKS 加密卷，是凭据的落盘处（推断）。</p></div>
     </div>
   </section>
 
